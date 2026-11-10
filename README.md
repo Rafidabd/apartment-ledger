@@ -8,7 +8,9 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 
 - Record groceries, bills, rent, and other expenses with a category, item, price, optional quantity, and optional purchase time.
 - Browse a monthly calendar; tap any date to view its entries and add more throughout the day.
-- Tap a saved grocery item instead of retyping it. Common items are included and new purchases are remembered automatically.
+- Pick frequently used items from a searchable set of shortcuts; common grocery names are included in English and Bengali (বাংলা).
+- Write custom item names in English, বাংলা, or a mixture. After entering a new item, choose whether to add it to the reusable list.
+- Optionally recall the last recorded price for a saved item. Prices are never filled in without a tap.
 - Track money received from each roommate's family, plus other deposits to the shared fund.
 - Keep **shared-fund advances** separate from **personal loans from the caretaker**.
 - Record partial repayments and carry unpaid balances into the next month.
@@ -18,7 +20,9 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 
 The main screen is built around four actions: **Add expense**, **Add money**, **Record advance**, and **Record repayment**. The **Calendar** view shows daily household spending and transaction counts. Tap a day, then add separate expenses at different times. The optional time field defaults to the current time for today's entries; older dates can be left without a time.
 
-The quick-entry screen offers tappable saved items grouped by category. Enter a new item once and it appears as a shortcut the next time; you can also manage the catalog in Settings.
+The quick-entry screen offers searchable, tappable saved items grouped by category. Start typing an item like "চাল", "ডাল", or "Eggs", or tap a saved item from the list. A new name triggers an inline **Add this to my item list?** checkbox (checked by default); uncheck it for a one-off purchase. The expense is still recorded either way. Saved item names are deduplicated within a category using Unicode normalization, so repeated Bengali names do not create separate shortcuts. You can also manage the catalog in Settings.
+
+For a saved item you've purchased before, the form shows its **last paid price** as a reference. Tap **Use last price** if it still applies; otherwise enter a new amount. The **Save & add another** action preserves the day and category and returns focus to the item field. Item labels and quantities accept Bengali text; use your device's Bengali keyboard/input method to type them. The app doesn't automatically translate or transliterate names.
 
 ## Run it locally
 
@@ -69,7 +73,7 @@ After installing the dependencies:
 python -m unittest discover -s tests -v
 ```
 
-These tests cover the fund/caretaker split, partial repayments, ledger reconciliation, calendar days, date/time entry, and duplicate-free saved item shortcuts. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
+These tests cover the fund/caretaker split, partial repayments, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, and repeat-entry navigation. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
 
 ## Current limits
 
