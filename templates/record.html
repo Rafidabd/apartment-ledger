@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+  {% set names = {'expense':'Add an expense','money':'Add money','advance':'Record an advance','repayment':'Record a repayment','caretaker-expense':'Caretaker-paid expense','reimburse':'Reimburse caretaker'} %}
+  <div class="page-head"><div><p class="eyebrow">QUICK ENTRY</p><h1>{{ names[kind] }}</h1><p class="subtitle">A few details, one tap, done.</p></div><a class="btn btn-outline" href="{{ url_for('dashboard') }}">← Dashboard</a></div>
+  <div class="entry-shell">
+    <nav class="kind-tabs" aria-label="Transaction type">
+      {% for key,label in [('expense','Expense'),('money','Money in'),('advance','Advance'),('repayment','Repayment'),('caretaker-expense','Caretaker purchase'),('reimburse','Reimburse')] %}
+        <a href="{{ url_for('record',kind=key) }}" class="{% if kind==key %}selected{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <div class="card entry-card">
+      {% if kind in ['repayment','reimburse'] and not available %}
+        <div class="empty"><strong>No outstanding balances found.</strong><p>Record an advance or caretaker-paid purchase first.</p><a class="btn btn-primary" href="{{ url_for('record',kind='advance') }}">Record an advance</a></div>
+      {% else %}
+      <form action="{{ url_for('record',kind=kind) }}" method="post" id="entry-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="form-grid">
+          <div class="field"><label for="tx_date">Date</label><input id="tx_date" name="tx_date" type="date" value="{{ request.form.get('tx_date',today) }}" required></div>
+          <div class="field"><label for="amount">Amount <span class="hint">(BDT)</span></label><div class="money-field"><span>৳</span><input id="amount" name="amount" inputmode="decimal" type="number" step="0.01" min="0.01" placeholder="0.00" value="{{ request.form.get('amount','') }}" required autofocus></div></div>
+          {% if kind in ['expense','caretaker-expense'] %}
+            <div class="field"><label for="category">Category</label><select name="category_id" id="category" required data-items-target="item-name">
+              <option value="">Select category</option>{% for cat in categories %}<option value="{{ cat.id }}" {% if request.form.get('category_id') == cat.id|string or (not request.form and cat.name == 'Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}</select></div>
+            <div class="field"><label for="item-name">Item or purchase</label><input name="item" id="item-name" list="saved-items" placeholder="e.g. Rice, eggs, electricity" value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off">
+              <datalist id="saved-items">{% for item in items %}<option value="{{ item.name }}">{{ item.category }}</option>{% endfor %}</datalist></div>
+            <div class="field wide"><label for="quantity">Quantity <span class="hint">optional</span></label><input id="quantity" name="quantity" maxlength="40" placeholder="e.g. 2 kg, 12 pcs" value="{{ request.form.get('quantity','') }}"></div>
+          {% elif kind == 'money' %}
+            <div class="field wide"><label for="money_type">What kind of money?</label><select id="money_type" name="money_type" data-toggle="member-money"><option value="contribution" {% if request.form.get('money_type','contribution')=='contribution' %}selected{% endif %}>A roommate's monthly contribution</option><option value="income" {% if request.form.get('money_type')=='income' %}selected{% endif %}>Other money added to the shared fund</option></select></div>
+            <div class="field wide" id="member-money"><label for="money-member">Which roommate?</label><select name="member_id" id="money-member"><option value="">Select roommate</option>{% for m in members %}<option value="{{ m.id }}" {% if request.form.get('member_id') == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select><div class="field-tip">Need someone new? <a href="{{ url_for('settings') }}">Add a roommate in Settings</a>.</div></div>
+          {% elif kind == 'advance' %}
+            <div class="field wide"><label for="advance-member">Who received the money?</label><select id="advance-member" name="member_id" required><option value="">Select roommate</option>{% for m in members %}<option value="{{ m.id }}" {% if request.form.get('member_id')==m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select></div>
+            <div class="field wide"><label for="source">Where did the money come from?</label><select name="source" id="source" required><option value="advance_fund" {% if request.form.get('source')=='advance_fund' %}selected{% endif %}>Shared apartment fund — reduces fund balance</option><option value="advance_caretaker" {% if request.form.get('source')=='advance_caretaker' %}selected{% endif %}>Caretaker's own pocket — fund unaffected</option></select></div>
+          {% elif kind in ['repayment','reimburse'] %}
+            <div class="field wide"><label for="related_id">Which outstanding amount is being settled?</label><select id="related_id" name="related_id" required><option value="">Choose an outstanding record</option>
+              {% for tx_id, entry in available %}<option value="{{ tx_id }}" {% if request.form.get('related_id')==tx_id|string %}selected{% endif %}>{{ entry.tx.member_name or entry.tx.item or 'Household expense' }} · {{ kinds[entry.tx.kind] }} · {{ entry.tx.tx_date }} · due {{ money(entry.remaining) }}</option>{% endfor %}
+            </select><p class="field-tip">Partial repayments are supported. Enter only the amount paid now.</p></div>
+          {% endif %}
+          <div class="field wide"><label for="note">Note <span class="hint">{% if kind=='money' %}required for other money{% else %}optional{% endif %}</span></label><textarea name="note" id="note" rows="2" maxlength="300" placeholder="Any detail you'd like to remember">{{ request.form.get('note','') }}</textarea></div>
+        </div>
+        {% if kind == 'caretaker-expense' %}<p class="info-note">This counts as a shared household expense, but does not reduce shared cash until you reimburse the caretaker.</p>{% elif kind == 'reimburse' %}<p class="info-note">This records money going from the shared fund back to the caretaker for a household purchase.</p>{% endif %}
+        <div class="form-actions"><button type="submit" class="btn btn-primary btn-lg">Save transaction <span>→</span></button>{% if kind in ['expense','caretaker-expense'] %}<button type="submit" class="btn btn-outline btn-lg" name="keep_adding" value="1">Save & add another</button>{% endif %}</div>
+      </form>
+      {% endif %}
+    </div>
+    <p class="footnote">Every entry changes the appropriate ledger automatically. Mistakes can be removed from Transactions.</p>
+  </div>
+{% endblock %}

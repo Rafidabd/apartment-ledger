@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-head">
+    <div><p class="eyebrow">YOUR APARTMENT AT A GLANCE</p><h1>Overview <span class="muted-title">/ {{ data.label }}</span></h1><p class="subtitle">All the shared money, without the spreadsheets.</p></div>
+    <form class="month-select" method="get"><label for="month">Month</label><input type="month" id="month" name="month" value="{{ data.month }}" onchange="this.form.submit()"></form>
+  </div>
+  <section class="summary-grid">
+    <div class="card hero-balance">
+      <div class="balance-label"><span class="round-symbol">◉</span> Available shared fund</div>
+      <div class="balance-amount">{{ money(data.closing) }}</div>
+      <div class="balance-sub">At the end of {{ data.label }} · opening {{ money(data.opening) }}</div>
+      <div class="balance-foot"><div><span>Money in</span><strong>{{ money(data.incoming) }}</strong></div><div><span>Cash out</span><strong>{{ money(data.outgoing) }}</strong></div></div>
+    </div>
+    <div class="stat-pair">
+      <div class="card stat"><div class="stat-icon green">↙</div><p>Roommate contributions</p><h2>{{ money(data.contributions) }}</h2><small>Received this month</small></div>
+      <div class="card stat"><div class="stat-icon coral">↗</div><p>Household spending</p><h2>{{ money(data.household) }}</h2><small>Includes caretaker-paid purchases</small></div>
+    </div>
+  </section>
+  <section class="action-grid" aria-label="Quick actions">
+    <a class="action primary-action" href="{{ url_for('record',kind='expense') }}"><span class="action-icon">＋</span><span><strong>Add expense</strong><small>Record today's purchases</small></span><b>↗</b></a>
+    <a class="action" href="{{ url_for('record',kind='money') }}"><span class="action-icon">↙</span><span><strong>Add money</strong><small>Parent contributions & other income</small></span><b>↗</b></a>
+    <a class="action" href="{{ url_for('record',kind='advance') }}"><span class="action-icon">⇄</span><span><strong>Record advance</strong><small>Shared fund or caretaker's money</small></span><b>↗</b></a>
+    <a class="action" href="{{ url_for('record',kind='repayment') }}"><span class="action-icon">✓</span><span><strong>Record repayment</strong><small>Settle someone's advance</small></span><b>↗</b></a>
+  </section>
+  <section class="small-stat-grid">
+    <div class="card small-stat"><span>↗ Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Roommates owe the shared fund</small></div>
+    <div class="card small-stat"><span>⇄ Caretaker advances unpaid</span><strong>{{ money(data.current.caretaker_due) }}</strong><small>Roommates owe the caretaker</small></div>
+    <div class="card small-stat"><span>◷ Caretaker reimbursements due</span><strong>{{ money(data.current.expenses_due) }}</strong><small>His own money used on shared expenses</small></div>
+  </section>
+  <section class="two-column">
+    <div class="card panel">
+      <div class="panel-title"><div><h3>Where money went</h3><p>Household spending by category</p></div><a href="{{ url_for('reports',month=data.month) }}">Full report ↗</a></div>
+      {% if data.by_category %}
+        {% for name, amount in data.by_category %}
+          <div class="bar-item"><div class="bar-label"><span>{{ name }}</span><strong>{{ money(amount) }}</strong></div><div class="bar-track"><div class="bar-fill palette-{{ loop.index0 % 5 }}" style="width:{{ (amount / data.household * 100) | round(2) }}%"></div></div></div>
+        {% endfor %}
+      {% else %}<div class="empty">No household spending recorded for this month yet.</div>{% endif %}
+    </div>
+    <div class="card panel">
+      <div class="panel-title"><div><h3>Recent activity</h3><p>Latest entries for {{ data.label }}</p></div><a href="{{ url_for('transactions',month=data.month) }}">View all ↗</a></div>
+      {% if data.rows %}
+        <div class="activity-list">
+        {% for tx in data.rows[:6] %}
+          <div class="activity"><div class="activity-icon {{ 'in' if tx.kind in ['opening','income','contribution','repayment_fund'] else 'out' }}">{{ '↙' if tx.kind in ['opening','income','contribution','repayment_fund'] else '↗' }}</div><div class="activity-name"><strong>{{ tx.item or tx.member_name or kinds[tx.kind] }}</strong><small>{{ kinds[tx.kind] }} · {{ tx.tx_date }}</small></div><strong class="activity-sum">{{ money(tx.amount) }}</strong></div>
+        {% endfor %}
+        </div>
+      {% else %}<div class="empty">Nothing here yet. Start with “Add expense” or “Add money”.</div>{% endif %}
+    </div>
+  </section>
+  <div class="helper-row"><a href="{{ url_for('record',kind='caretaker-expense') }}">Caretaker bought something with his own money? Record it here ↗</a><a href="{{ url_for('record',kind='reimburse') }}">Reimburse caretaker ↗</a></div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="page-head"><div><p class="eyebrow">MONTHLY REVIEW</p><h1>{{ data.label }} report</h1><p class="subtitle">A clear picture of your apartment's finances.</p></div><div class="head-controls"><form method="get" class="month-select"><label for="month">Month</label><input type="month" id="month" name="month" value="{{ data.month }}" onchange="this.form.submit()"></form><button class="btn btn-outline" onclick="window.print()">Print report ↗</button></div></div>
+  <div class="report-hero card"><p class="eyebrow">HOW YOUR SHARED FUND MOVED</p><div class="report-math"><div><small>Opening cash</small><strong>{{ money(data.opening) }}</strong></div><span>+</span><div><small>Money in</small><strong>{{ money(data.incoming) }}</strong></div><span>−</span><div><small>Cash out</small><strong>{{ money(data.outgoing) }}</strong></div><span>=</span><div class="report-result"><small>Closing cash</small><strong>{{ money(data.closing) }}</strong></div></div></div>
+  <section class="small-stat-grid">
+    <div class="card small-stat"><span>Household spending</span><strong>{{ money(data.household) }}</strong><small>Including caretaker-paid items</small></div>
+    <div class="card small-stat"><span>Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Owed by roommates as of month-end</small></div>
+    <div class="card small-stat"><span>Caretaker amounts unpaid</span><strong>{{ money(data.current.caretaker_due + data.current.expenses_due) }}</strong><small>Personal advances + shared purchases</small></div>
+  </section>
+  <section class="two-column">
+    <div class="card panel"><div class="panel-title"><div><h3>Category breakdown</h3><p>Most money spent in {{ data.label }}</p></div></div>
+      {% if data.by_category %}{% for name, amount in data.by_category %}<div class="bar-item"><div class="bar-label"><span>{{ name }}</span><strong>{{ money(amount) }}</strong></div><div class="bar-track"><div class="bar-fill palette-{{ loop.index0 % 5 }}" style="width:{{ (amount / data.household * 100) | round(2) }}%"></div></div></div>{% endfor %}{% else %}<div class="empty">No shared purchases recorded.</div>{% endif %}
+    </div>
+    <div class="card panel"><div class="panel-title"><div><h3>Most purchased items</h3><p>Ranked by purchase frequency</p></div></div>
+      {% if data.top_items %}<div class="leaderboard">{% for item in data.top_items %}<div class="leader"><span class="leader-no">{{ loop.index }}</span><div><strong>{{ item.name }}</strong><small>{{ item.count }} purchase{{ 's' if item.count != 1 }} · {{ money(item.total) }} spent</small></div></div>{% endfor %}</div>{% else %}<div class="empty">Items will appear after you add expenses.</div>{% endif %}
+    </div>
+  </section>
+  <section class="two-column">
+    <div class="card panel"><div class="panel-title"><div><h3>Roommate contributions</h3><p>Actual money received this month</p></div></div>
+      {% if data.members %}{% for name, amount in data.members %}<div class="simple-row"><span>{{ name }}</span><strong>{{ money(amount) }}</strong></div>{% endfor %}{% else %}<div class="empty">No roommate contributions recorded yet.</div>{% endif %}
+    </div>
+    <div class="card panel"><div class="panel-title"><div><h3>Six-month spending trend</h3><p>Household spending, not personal advances</p></div></div>
+      {% set maxval = (months | map(attribute=1) | max) or 1 %}
+      <div class="trend-chart">{% for month, amount in months %}<div class="trend-col"><div class="trend-value">{{ money(amount) }}</div><div class="trend-well"><div class="trend-bar" style="height:{{ (amount/maxval*100)|round(1) }}%"></div></div><small>{{ month[5:] }}/{{ month[2:4] }}</small></div>{% endfor %}</div>
+    </div>
+  </section>
+  <p class="footnote">Cash balance is not the same as savings. Personal advances are tracked as money owed, not household consumption. All amounts use recorded transactions through month-end.</p>
+{% endblock %}
