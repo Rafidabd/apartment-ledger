@@ -1,7 +1,18 @@
+# Local application data and credentials — do not commit
+instance/
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.*
+!.env.example
+
+# Python and editor files
 .venv/
+venv/
 __pycache__/
 *.pyc
 .pytest_cache/
-instance/
-.env
 .DS_Store
+.vscode/
+.idea/
