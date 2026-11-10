@@ -88,8 +88,7 @@
     category.addEventListener('change', () => {
       expanded = false;
       if (search) search.value = '';
-      // Prevent an item from one category being silently categorized as another.
-      input.value = '';
+      // Preserve typed names when switching categories; recheck saved items for the new category.
       refresh();
     });
     input.addEventListener('input', updateSelected);
