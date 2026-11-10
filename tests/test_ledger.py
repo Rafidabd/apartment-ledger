@@ -156,5 +156,34 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(count, 1)
 
 
+    def test_older_database_keeps_transactions_when_time_column_is_added(self):
+        import sqlite3
+        legacy = Path(self.temp.name) / 'legacy.sqlite3'
+        with sqlite3.connect(legacy) as connection:
+            connection.execute("""CREATE TABLE transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tx_date TEXT NOT NULL, kind TEXT NOT NULL,
+                amount INTEGER NOT NULL CHECK(amount > 0),
+                member_id INTEGER, category_id INTEGER,
+                item TEXT NOT NULL DEFAULT '', quantity TEXT NOT NULL DEFAULT '',
+                note TEXT NOT NULL DEFAULT '', related_id INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )""")
+            connection.execute(
+                "INSERT INTO transactions(tx_date,kind,amount,note) VALUES (?,?,?,?)",
+                ('2026-11-08', 'opening', 40000, 'Previous balance')
+            )
+        upgraded = create_app({'TESTING': True, 'DATABASE': str(legacy)})
+        with upgraded.app_context():
+            report = upgraded.extensions['ledger_tools']['monthly_data']('2026-11')
+        with sqlite3.connect(legacy) as connection:
+            columns = [r[1] for r in connection.execute("PRAGMA table_info(transactions)")]
+            recorded_time = connection.execute("SELECT tx_time FROM transactions WHERE id=1").fetchone()[0]
+        self.assertIn('tx_time', columns)
+        self.assertEqual(recorded_time, '')
+        self.assertEqual(report['closing'], 40000)
+
+
+
 if __name__ == '__main__':
     unittest.main()
