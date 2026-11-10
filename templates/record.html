@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
   {% set names = {'expense':'Add an expense','money':'Add money','advance':'Record an advance','repayment':'Record a repayment','caretaker-expense':'Caretaker-paid expense','reimburse':'Reimburse caretaker'} %}
-  <div class="page-head"><div><p class="eyebrow">QUICK ENTRY</p><h1>{{ names[kind] }}</h1><p class="subtitle">A few details, one tap, done.</p></div><a class="btn btn-outline" href="{{ url_for('dashboard') }}">← Dashboard</a></div>
+  <div class="page-head"><div><p class="eyebrow">QUICK ENTRY</p><h1>{{ names[kind] }}</h1><p class="subtitle">A few details, one tap, done.</p></div><a class="btn btn-outline" href="{{ url_for('day_view',day=entry_date) if from_day else url_for('dashboard') }}">← {{ 'Back to day' if from_day else 'Dashboard' }}</a></div>
   <div class="entry-shell">
     <nav class="kind-tabs" aria-label="Transaction type">
       {% for key,label in [('expense','Expense'),('money','Money in'),('advance','Advance'),('repayment','Repayment'),('caretaker-expense','Caretaker purchase'),('reimburse','Reimburse')] %}
-        <a href="{{ url_for('record',kind=key) }}" class="{% if kind==key %}selected{% endif %}">{{ label }}</a>
+        <a href="{{ url_for('record',kind=key,date=entry_date if from_day else None,from_day=1 if from_day else None) }}" class="{% if kind==key %}selected{% endif %}">{{ label }}</a>
       {% endfor %}
     </nav>
     <div class="card entry-card">
@@ -13,15 +13,24 @@
         <div class="empty"><strong>No outstanding balances found.</strong><p>Record an advance or caretaker-paid purchase first.</p><a class="btn btn-primary" href="{{ url_for('record',kind='advance') }}">Record an advance</a></div>
       {% else %}
       <form action="{{ url_for('record',kind=kind) }}" method="post" id="entry-form">
-        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">{% if from_day %}<input type="hidden" name="return_day" value="1">{% endif %}
         <div class="form-grid">
-          <div class="field"><label for="tx_date">Date</label><input id="tx_date" name="tx_date" type="date" value="{{ request.form.get('tx_date',today) }}" required></div>
+          <div class="field"><label for="tx_date">Date & time</label><div class="entry-date-time"><input id="tx_date" aria-label="Date" name="tx_date" type="date" value="{{ entry_date }}" required><input id="tx_time" aria-label="Time (optional)" name="tx_time" type="time" value="{{ entry_time }}"></div><small class="field-tip">Time is optional for older entries.</small></div>
           <div class="field"><label for="amount">Amount <span class="hint">(BDT)</span></label><div class="money-field"><span>৳</span><input id="amount" name="amount" inputmode="decimal" type="number" step="0.01" min="0.01" placeholder="0.00" value="{{ request.form.get('amount','') }}" required autofocus></div></div>
           {% if kind in ['expense','caretaker-expense'] %}
             <div class="field"><label for="category">Category</label><select name="category_id" id="category" required data-items-target="item-name">
-              <option value="">Select category</option>{% for cat in categories %}<option value="{{ cat.id }}" {% if request.form.get('category_id') == cat.id|string or (not request.form and cat.name == 'Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}</select></div>
+              <option value="">Select category</option>{% for cat in categories %}<option value="{{ cat.id }}" {% if selected_category == cat.id|string or (not selected_category and cat.name == 'Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}</select></div>
             <div class="field"><label for="item-name">Item or purchase</label><input name="item" id="item-name" list="saved-items" placeholder="e.g. Rice, eggs, electricity" value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off">
-              <datalist id="saved-items">{% for item in items %}<option value="{{ item.name }}">{{ item.category }}</option>{% endfor %}</datalist></div>
+              <datalist id="saved-items"></datalist></div>
+            <div class="field wide item-shortcuts" data-item-picker>
+              <div class="shortcut-head"><span><strong>Tap a saved item</strong> <span class="hint">or type something new above</span></span><a href="{{ url_for('settings') }}">Manage items ↗</a></div>
+              <div class="shortcut-list">
+                {% for saved in items %}
+                  <button type="button" class="item-shortcut" data-name="{{ saved.name }}" data-category="{{ saved.category_id }}" hidden>{{ saved.name }}</button>
+                {% endfor %}
+              </div>
+              <small class="field-tip item-shortcuts-empty" hidden>No items in this category yet. New purchases are saved automatically.</small>
+            </div>
             <div class="field wide"><label for="quantity">Quantity <span class="hint">optional</span></label><input id="quantity" name="quantity" maxlength="40" placeholder="e.g. 2 kg, 12 pcs" value="{{ request.form.get('quantity','') }}"></div>
           {% elif kind == 'money' %}
             <div class="field wide"><label for="money_type">What kind of money?</label><select id="money_type" name="money_type" data-toggle="member-money"><option value="contribution" {% if request.form.get('money_type','contribution')=='contribution' %}selected{% endif %}>A roommate's monthly contribution</option><option value="income" {% if request.form.get('money_type')=='income' %}selected{% endif %}>Other money added to the shared fund</option></select></div>

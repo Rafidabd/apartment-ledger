@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head calendar-heading">
+  <div><p class="eyebrow">ONE DAY AT A TIME</p><h1>Expense calendar</h1><p class="subtitle">Pick any day to see purchases, contributions and advances. Add entries whenever you need.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('record',kind='expense',date=today,from_day=1) }}">＋ Today's expense</a>
+</div>
+<section class="card calendar-card" aria-label="Monthly expense calendar">
+  <div class="calendar-toolbar">
+    <div><p class="eyebrow">MONTHLY ACTIVITY</p><h2>{{ label }}</h2></div>
+    <div class="calendar-arrows">
+      <a href="{{ url_for('calendar_view',month=prev_month) }}" aria-label="Previous month">←</a>
+      <a class="calendar-today" href="{{ url_for('calendar_view',month=current_month) }}">Today</a>
+      <a href="{{ url_for('calendar_view',month=next_month) }}" aria-label="Next month">→</a>
+    </div>
+  </div>
+  <div class="calendar-weekdays" aria-hidden="true">{% for short in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<span>{{ short }}</span>{% endfor %}</div>
+  <div class="calendar-grid">
+    {% for week in weeks %}
+      {% for number in week %}
+        {% if number %}
+          {% set day_iso = month ~ '-' ~ ('%02d'|format(number)) %}
+          {% set info = activity.get(number) %}
+          <a class="calendar-day{% if day_iso == today %} is-today{% endif %}{% if info %} has-entries{% endif %}"
+             href="{{ url_for('day_view',day=day_iso) }}" aria-label="{{ day_iso }}{% if info %}, {{ info.entries }} transactions, {{ money(info.spent) }} household spending{% endif %}">
+            <span class="day-number">{{ number }}</span>
+            {% if info %}
+              <span class="day-total">{{ money(info.spent) }}</span>
+              <span class="day-count">{{ info.entries }} {{ 'entry' if info.entries == 1 else 'entries' }}</span>
+            {% else %}
+              <span class="day-add" aria-hidden="true">＋</span>
+            {% endif %}
+          </a>
+        {% else %}<div class="calendar-day day-blank" aria-hidden="true"></div>{% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="calendar-legend"><span><i class="legend-dot"></i> Recorded activity</span><span>Amounts show household purchases, including caretaker-paid ones.</span></div>
+</section>
+<div class="calendar-tip">Tip: You can add multiple purchases to the same date at different times. Select an empty day to start.</div>
+{% endblock %}

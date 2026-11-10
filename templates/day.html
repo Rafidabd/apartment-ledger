@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head day-heading">
+  <div><p class="eyebrow">DAILY LEDGER</p><h1>{{ label }}</h1><p class="subtitle">A running record of what happened on this date.</p></div>
+  <a href="{{ url_for('calendar_view',month=day[:7]) }}" class="btn btn-outline">← Month calendar</a>
+</div>
+<div class="day-navigator">
+  <a href="{{ url_for('day_view',day=prev_day) }}">← Previous day</a>
+  <span>{{ day }}</span>
+  <a href="{{ url_for('day_view',day=next_day) }}">Next day →</a>
+</div>
+<div class="day-stats">
+  <div class="card day-stat"><span>Household purchases</span><strong>{{ money(spent) }}</strong><small>Shared-fund and caretaker-paid</small></div>
+  <div class="card day-stat"><span>Money received</span><strong>{{ money(incoming) }}</strong><small>Contributions and other shared income</small></div>
+  <div class="card day-stat"><span>Transactions recorded</span><strong>{{ rows|length }}</strong><small>Across the selected day</small></div>
+</div>
+<div class="day-actions">
+  <a class="btn btn-primary" href="{{ url_for('record',kind='expense',date=day,from_day=1) }}">＋ Add expense</a>
+  <a class="btn btn-outline" href="{{ url_for('record',kind='money',date=day,from_day=1) }}">↙ Add money</a>
+  <a class="btn btn-outline" href="{{ url_for('record',kind='advance',date=day,from_day=1) }}">⇄ Advance</a>
+  <a class="btn btn-outline" href="{{ url_for('record',kind='caretaker-expense',date=day,from_day=1) }}">Caretaker purchase</a>
+  <a class="btn btn-outline" href="{{ url_for('record',kind='repayment',date=day,from_day=1) }}">Repayment</a>
+</div>
+<section class="card panel day-panel">
+  <div class="panel-title"><div><h3>Entries for this day</h3><p>Times are optional. Multiple entries can share the same date.</p></div></div>
+  {% if rows %}
+    <div class="day-entries">
+      {% for tx in rows %}
+      <div class="day-entry">
+        <div class="day-time"><strong>{{ tx.tx_time if tx.tx_time else '—' }}</strong><small>{{ 'Time' if tx.tx_time else 'No time' }}</small></div>
+        <div class="day-entry-content">
+          <strong>{{ tx.item or tx.member_name or kinds[tx.kind] }}</strong>
+          <span>{{ kinds[tx.kind] }}{% if tx.category_name %} · {{ tx.category_name }}{% endif %}{% if tx.member_name %} · {{ tx.member_name }}{% endif %}</span>
+          {% if tx.quantity or tx.note %}<small>{% if tx.quantity %}{{ tx.quantity }}{% endif %}{% if tx.quantity and tx.note %} · {% endif %}{{ tx.note }}</small>{% endif %}
+        </div>
+        <div class="day-entry-end"><strong>{{ money(tx.amount) }}</strong>
+          <form method="post" action="{{ url_for('delete_transaction',tx_id=tx.id) }}" onsubmit="return confirm('Delete this entry? This recalculates balances.');">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="return_day" value="1">
+            <button class="text-danger" type="submit">Delete</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty day-empty"><strong>Nothing recorded here yet.</strong><p>Add your first expense, then come back later to add more.</p><a class="btn btn-primary" href="{{ url_for('record',kind='expense',date=day,from_day=1) }}">＋ Add expense</a></div>
+  {% endif %}
+</section>
+{% endblock %}

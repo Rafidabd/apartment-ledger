@@ -6,7 +6,9 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 
 ## What it does
 
-- Record groceries, bills, rent, and other expenses with a category, item, price, and optional quantity.
+- Record groceries, bills, rent, and other expenses with a category, item, price, optional quantity, and optional purchase time.
+- Browse a monthly calendar; tap any date to view its entries and add more throughout the day.
+- Tap a saved grocery item instead of retyping it. Common items are included and new purchases are remembered automatically.
 - Track money received from each roommate's family, plus other deposits to the shared fund.
 - Keep **shared-fund advances** separate from **personal loans from the caretaker**.
 - Record partial repayments and carry unpaid balances into the next month.
@@ -14,7 +16,9 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 - View monthly totals, spending by category, frequently purchased items, and each roommate's contributions.
 - Export transactions to CSV or download a complete SQLite backup.
 
-The main screen is built around four actions: **Add expense**, **Add money**, **Record advance**, and **Record repayment**. Items and categories are editable in Settings.
+The main screen is built around four actions: **Add expense**, **Add money**, **Record advance**, and **Record repayment**. The **Calendar** view shows daily household spending and transaction counts. Tap a day, then add separate expenses at different times. The optional time field defaults to the current time for today's entries; older dates can be left without a time.
+
+The quick-entry screen offers tappable saved items grouped by category. Enter a new item once and it appears as a shortcut the next time; you can also manage the catalog in Settings.
 
 ## Run it locally
 
@@ -33,6 +37,8 @@ python app.py
 Open **http://127.0.0.1:5000**. On the first visit, set an admin password, add the roommates, and optionally enter the amount currently in the shared fund.
 
 If you start recording in the middle of a month, treat that opening amount as **cash on hand that day**. Don't backfill earlier spending without also entering the funding that covered it.
+
+**Updating an existing local install:** Stop the running app, replace/update the source code, and run it again. The app automatically adds the optional time column to older SQLite databases without deleting transactions. Your existing `instance/` folder must stay on your computer; back it up before changing environments.
 
 ## How the two kinds of advances work
 
@@ -63,7 +69,7 @@ After installing the dependencies:
 python -m unittest discover -s tests -v
 ```
 
-These tests cover the fund/caretaker split, partial repayments, and ledger reconciliation. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
+These tests cover the fund/caretaker split, partial repayments, ledger reconciliation, calendar days, date/time entry, and duplicate-free saved item shortcuts. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
 
 ## Current limits
 
