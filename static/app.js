@@ -12,46 +12,98 @@
     update();
   }
 
-  // A few taps are faster than typing the same grocery names every day.
   const category = document.getElementById('category');
   const input = document.getElementById('item-name');
   const itemPicker = document.querySelector('[data-item-picker]');
   const savedList = document.getElementById('saved-items');
   if (category && input && itemPicker && savedList) {
     const buttons = [...itemPicker.querySelectorAll('.item-shortcut')];
+    const search = document.getElementById('saved-item-search');
+    const showAll = document.getElementById('show-all-items');
+    const count = document.getElementById('shortcut-count');
     const empty = itemPicker.querySelector('.item-shortcuts-empty');
-    const refreshSelection = () => {
-      buttons.forEach(button => {
-        button.classList.toggle('is-selected',
-          !button.hidden && button.dataset.name.toLocaleLowerCase() === input.value.trim().toLocaleLowerCase());
-      });
+    const rememberRow = document.getElementById('remember-item-row');
+    const remember = document.getElementById('remember-item');
+    const lastPrice = document.getElementById('last-price-hint');
+    const lastPriceText = document.getElementById('last-price-text');
+    const useLast = document.getElementById('use-last-price');
+    const amount = document.getElementById('amount');
+    const shortListLimit = 12;
+    let expanded = false;
+    const norm = value => String(value || '').normalize('NFC').trim().toLocaleLowerCase();
+
+    // A new item is always allowed as an expense. Adding it to favorites is optional.
+    const updateSelected = () => {
+      const current = norm(input.value);
+      const match = buttons.find(b => b.dataset.category === category.value &&
+        norm(b.dataset.name) === current);
+      buttons.forEach(b => b.classList.toggle('is-selected', !!match && match === b));
+      const isNew = current.length > 0 && !match;
+      if (rememberRow && remember) {
+        rememberRow.hidden = !isNew;
+        remember.disabled = !isNew;
+      }
+      const cents = match ? Number(match.dataset.lastCents) : NaN;
+      const hasLast = match && match.dataset.lastCents !== '' &&
+        Number.isFinite(cents) && cents > 0;
+      if (lastPrice) lastPrice.hidden = !hasLast;
+      if (hasLast && lastPriceText) {
+        lastPriceText.textContent = 'Last paid: ৳' + (cents / 100).toLocaleString('en-BD', {
+          minimumFractionDigits: 0, maximumFractionDigits: 2
+        });
+      }
+      if (useLast) useLast.dataset.amount = hasLast ? (cents / 100).toFixed(2) : '';
     };
+
     const refresh = () => {
+      const selected = buttons.filter(b => b.dataset.category === category.value);
+      const query = norm(search?.value);
+      const filtered = query ? selected.filter(b => norm(b.dataset.name).includes(query)) : selected;
+      const visible = (expanded || query) ? filtered : filtered.slice(0, shortListLimit);
+      const shown = new Set(visible);
+      buttons.forEach(b => { b.hidden = !shown.has(b); });
       savedList.replaceChildren();
-      let visible = 0;
-      buttons.forEach(button => {
-        const show = button.dataset.category === category.value;
-        button.hidden = !show;
-        if (show) {
-          visible++;
-          const option = document.createElement('option');
-          option.value = button.dataset.name;
-          savedList.appendChild(option);
-        }
+      selected.forEach(b => {
+        const option = document.createElement('option');
+        option.value = b.dataset.name;
+        savedList.appendChild(option);
       });
-      if (empty) empty.hidden = visible !== 0;
-      refreshSelection();
+      if (empty) empty.hidden = filtered.length !== 0;
+      if (showAll) {
+        showAll.hidden = !!query || selected.length <= shortListLimit;
+        showAll.textContent = expanded ? 'Show fewer' : 'Show all (' + selected.length + ')';
+      }
+      if (count) count.textContent = filtered.length > 0
+        ? (visible.length === filtered.length ? filtered.length + ' items available'
+          : 'Showing ' + visible.length + ' of ' + filtered.length + ' saved items')
+        : '';
+      updateSelected();
     };
-    buttons.forEach(button => {
-      button.addEventListener('click', () => {
-        input.value = button.dataset.name;
-        refreshSelection();
-        document.getElementById('amount')?.focus();
-      });
+
+    buttons.forEach(b => b.addEventListener('click', () => {
+      input.value = b.dataset.name;
+      updateSelected();
+      if (amount) amount.focus();
+    }));
+    category.addEventListener('change', () => {
+      expanded = false;
+      if (search) search.value = '';
+      // Prevent an item from one category being silently categorized as another.
+      input.value = '';
+      refresh();
     });
-    category.addEventListener('change', refresh);
-    input.addEventListener('input', refreshSelection);
+    input.addEventListener('input', updateSelected);
+    search?.addEventListener('input', refresh);
+    showAll?.addEventListener('click', () => { expanded = !expanded; refresh(); });
+    useLast?.addEventListener('click', () => {
+      if (amount && useLast.dataset.amount) {
+        amount.value = useLast.dataset.amount;
+        amount.focus();
+        amount.select();
+      }
+    });
     refresh();
+    if (document.getElementById('entry-form')?.dataset.repeat === '1') input.focus();
   }
 
   const entryDate = document.getElementById('tx_date');
@@ -67,10 +119,9 @@
   }
 
   const entry = document.getElementById('entry-form');
-  if (entry) entry.addEventListener('submit', (e) => {
+  if (entry) entry.addEventListener('submit', e => {
     const button = e.submitter;
     if (button && button.tagName === 'BUTTON') {
-      // Defer disabling until after form fields (including the clicked button) serialize.
       window.setTimeout(() => { button.disabled = true; button.textContent = 'Saving…'; }, 0);
     }
   });
