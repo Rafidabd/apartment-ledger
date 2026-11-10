@@ -1,6 +1,7 @@
 """Apartment Ledger: a small, private, SQLite-backed apartment finance app."""
 from __future__ import annotations
 
+import calendar as pycalendar
 import csv
 import io
 import os
@@ -18,6 +19,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE = Path(__file__).resolve().parent
 DEFAULT_CATEGORIES = ["Groceries", "Rent", "Utilities", "Household supplies", "Maintenance", "Transport", "Other"]
+DEFAULT_ITEMS = {
+    "Groceries": ["Rice", "Eggs", "Cooking oil", "Lentils", "Potatoes", "Onions",
+                  "Vegetables", "Chicken", "Fish", "Milk", "Bread", "Sugar", "Salt", "Tea"],
+    "Utilities": ["Electricity", "Water", "Cooking gas", "Internet"],
+    "Household supplies": ["Soap", "Detergent", "Tissue", "Dishwashing liquid"],
+    "Rent": ["Monthly rent"],
+}
 KIND_NAMES = {
     "opening": "Opening balance", "contribution": "Roommate contribution",
     "income": "Other money received", "expense": "Shared expense",
@@ -68,6 +76,26 @@ def valid_date(value: str) -> str:
         return date.fromisoformat(value).isoformat()
     except (ValueError, TypeError):
         raise ValueError("Choose a valid date.") from None
+
+
+def valid_time(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        parsed = datetime.strptime(value, "%H:%M")
+        if parsed.strftime("%H:%M") != value:
+            raise ValueError
+        return value
+    except (ValueError, TypeError):
+        raise ValueError("Choose a valid time, such as 09:30.") from None
+
+
+def save_item(conn, name, category_id):
+    """Save one reusable item per category, regardless of capitalization."""
+    conn.execute("""INSERT INTO items(name,category_id)
+                    SELECT ?,? WHERE NOT EXISTS(
+                        SELECT 1 FROM items WHERE category_id=? AND name=? COLLATE NOCASE)""",
+                 (name, category_id, category_id, name))
 
 
 def create_app(test_config=None):
@@ -129,8 +157,15 @@ def create_app(test_config=None):
           CREATE INDEX IF NOT EXISTS idx_tx_date ON transactions(tx_date);
           CREATE INDEX IF NOT EXISTS idx_tx_related ON transactions(related_id);
         """)
+        # Upgrade an existing local database without losing earlier transactions.
+        if "tx_time" not in {row["name"] for row in conn.execute("PRAGMA table_info(transactions)")}: 
+            conn.execute("ALTER TABLE transactions ADD COLUMN tx_time TEXT NOT NULL DEFAULT ''")
         for cat in DEFAULT_CATEGORIES:
             conn.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)", (cat,))
+        for category, names in DEFAULT_ITEMS.items():
+            cat_id = conn.execute("SELECT id FROM categories WHERE name=?", (category,)).fetchone()["id"]
+            for item_name in names:
+                save_item(conn, item_name, cat_id)
         conn.commit()
 
     def get_setting(key, fallback=""):
@@ -219,8 +254,11 @@ def create_app(test_config=None):
         session.clear()
         return redirect(url_for("login"))
 
-    def all_transactions(before=None, after=None, limit=None):
+    def all_transactions(before=None, after=None, limit=None, on=None):
         where, args = [], []
+        if on:
+            where.append("t.tx_date = ?")
+            args.append(on)
         if before:
             where.append("t.tx_date < ?")
             args.append(before)
@@ -232,7 +270,7 @@ def create_app(test_config=None):
                    LEFT JOIN categories c ON t.category_id=c.id"""
         if where:
             query += " WHERE " + " AND ".join(where)
-        query += " ORDER BY t.tx_date DESC, t.id DESC"
+        query += " ORDER BY t.tx_date DESC, t.tx_time DESC, t.id DESC"
         if limit:
             query += f" LIMIT {int(limit)}"
         return db().execute(query, args).fetchall()
