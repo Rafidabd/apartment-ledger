@@ -2,7 +2,7 @@
 {% block content %}
   <div class="page-head">
     <div><p class="eyebrow">YOUR APARTMENT AT A GLANCE</p><h1>Overview <span class="muted-title">/ {{ data.label }}</span></h1><p class="subtitle">All the shared money, without the spreadsheets.</p></div>
-    <form class="month-select" method="get"><label for="month">Month</label><input type="month" id="month" name="month" value="{{ data.month }}" onchange="this.form.submit()"></form>
+    <div class="head-controls"><a class="btn btn-outline" href="{{ url_for('calendar_view',month=data.month) }}">▦ Open calendar ↗</a><form class="month-select" method="get"><label for="month">Month</label><input type="month" id="month" name="month" value="{{ data.month }}" onchange="this.form.submit()"></form></div>
   </div>
   <section class="summary-grid">
     <div class="card hero-balance">
@@ -47,5 +47,5 @@
       {% else %}<div class="empty">Nothing here yet. Start with “Add expense” or “Add money”.</div>{% endif %}
     </div>
   </section>
-  <div class="helper-row"><a href="{{ url_for('record',kind='caretaker-expense') }}">Caretaker bought something with his own money? Record it here ↗</a><a href="{{ url_for('record',kind='reimburse') }}">Reimburse caretaker ↗</a></div>
+  <div class="helper-row"><a href="{{ url_for('settings') }}">Manage saved items ↗</a><a href="{{ url_for('record',kind='caretaker-expense') }}">Caretaker bought something with his own money? Record it here ↗</a><a href="{{ url_for('record',kind='reimburse') }}">Reimburse caretaker ↗</a></div>
 {% endblock %}
