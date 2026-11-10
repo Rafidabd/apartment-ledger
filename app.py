@@ -340,6 +340,44 @@ def create_app(test_config=None):
             abort(400, description="Invalid month.")
         return render_template("dashboard.html", title="Dashboard", data=data)
 
+    @app.get("/calendar")
+    def calendar_view():
+        try:
+            month, start, end, label = month_range(request.args.get("month"))
+        except ValueError:
+            abort(400, description="Invalid month.")
+        first = date.fromisoformat(start)
+        activity = {}
+        for row in db().execute("""
+            SELECT tx_date, COUNT(*) AS entries,
+                   COALESCE(SUM(CASE WHEN kind IN ('expense','caretaker_expense')
+                                     THEN amount ELSE 0 END),0) AS spent
+            FROM transactions WHERE tx_date>=? AND tx_date<?
+            GROUP BY tx_date
+        """, (start, end)):
+            activity[int(row["tx_date"][-2:])] = dict(row)
+        prev_month = (first - timedelta(days=1)).strftime("%Y-%m")
+        next_month = date(first.year + (first.month == 12), first.month % 12 + 1, 1).strftime("%Y-%m")
+        return render_template("calendar.html", title="Daily calendar", month=month,
+                               label=label, weeks=pycalendar.monthcalendar(first.year, first.month),
+                               activity=activity, prev_month=prev_month, next_month=next_month)
+
+    @app.get("/day/<day>")
+    def day_view(day):
+        try:
+            chosen = valid_date(day)
+        except ValueError:
+            abort(404)
+        rows = all_transactions(on=chosen)
+        spent = sum(tx["amount"] for tx in rows if tx["kind"] in {"expense", "caretaker_expense"})
+        incoming = sum(tx["amount"] for tx in rows if tx["kind"] in {"opening", "contribution", "income"})
+        chosen_date = date.fromisoformat(chosen)
+        return render_template("day.html", title="Daily activity", day=chosen,
+                               label=chosen_date.strftime("%A, %d %B %Y"), rows=rows,
+                               spent=spent, incoming=incoming,
+                               prev_day=(chosen_date - timedelta(days=1)).isoformat(),
+                               next_day=(chosen_date + timedelta(days=1)).isoformat())
+
     @app.route("/record/<kind>", methods=["GET", "POST"])
     def record(kind):
         kinds = {"expense", "money", "advance", "repayment", "caretaker-expense", "reimburse"}
@@ -348,7 +386,23 @@ def create_app(test_config=None):
         conn = db()
         members = conn.execute("SELECT * FROM members WHERE active=1 ORDER BY name").fetchall()
         categories = conn.execute("SELECT * FROM categories ORDER BY name").fetchall()
-        items = conn.execute("SELECT i.name,c.name AS category FROM items i JOIN categories c ON c.id=i.category_id ORDER BY i.name").fetchall()
+        items = conn.execute("""
+            SELECT i.name, i.category_id, c.name AS category, COUNT(t.id) AS used
+            FROM items i JOIN categories c ON c.id=i.category_id
+            LEFT JOIN transactions t ON t.category_id=i.category_id
+               AND t.item=i.name COLLATE NOCASE AND t.kind IN ('expense','caretaker_expense')
+            GROUP BY i.id ORDER BY used DESC, i.name COLLATE NOCASE
+        """).fetchall()
+        selected_day = request.args.get("date")
+        if selected_day:
+            try:
+                selected_day = valid_date(selected_day)
+            except ValueError:
+                abort(400, description="Invalid entry date.")
+        entry_date = request.form.get("tx_date", selected_day or date.today().isoformat())
+        entry_time = request.form.get(
+            "tx_time", datetime.now().strftime("%H:%M") if entry_date == date.today().isoformat() else "")
+        from_day = request.args.get("from_day") == "1" or request.form.get("return_day") == "1"
         outstanding = balances_at("9999-12-31")["remaining"]
         available = [(a, entry) for a, entry in outstanding.items() if entry["remaining"] > 0]
         if kind == "repayment":
@@ -359,6 +413,7 @@ def create_app(test_config=None):
         if request.method == "POST":
             try:
                 tx_date = valid_date(request.form.get("tx_date", ""))
+                tx_time = valid_time(request.form.get("tx_time", ""))
                 amount = parse_amount(request.form.get("amount", ""))
                 note = request.form.get("note", "").strip()[:300]
                 item = request.form.get("item", "").strip()[:120]
@@ -405,19 +460,24 @@ def create_app(test_config=None):
                     member_id = base["member_id"]
                 with conn:
                     conn.execute("""INSERT INTO transactions
-                      (tx_date,kind,amount,member_id,category_id,item,quantity,note,related_id)
-                      VALUES(?,?,?,?,?,?,?,?,?)""",
-                      (tx_date, tx_kind, amount, member_id, category_id, item, quantity, note, related_id))
+                      (tx_date,tx_time,kind,amount,member_id,category_id,item,quantity,note,related_id)
+                      VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                      (tx_date, tx_time, tx_kind, amount, member_id, category_id, item, quantity, note, related_id))
                     if kind in {"expense", "caretaker-expense"}:
-                        conn.execute("INSERT OR IGNORE INTO items(name,category_id) VALUES(?,?)", (item, category_id))
+                        save_item(conn, item, category_id)
                 flash("Saved successfully.", "success")
                 if request.form.get("keep_adding") == "1" and kind in {"expense", "caretaker-expense"}:
-                    return redirect(url_for("record", kind=kind))
+                    return redirect(url_for("record", kind=kind, date=tx_date,
+                                            category=category_id, from_day="1" if from_day else None))
+                if from_day:
+                    return redirect(url_for("day_view", day=tx_date))
                 return redirect(url_for("dashboard", month=tx_date[:7]))
             except ValueError as e:
                 flash(str(e), "error")
         return render_template("record.html", title="Record a transaction", kind=kind,
-                               members=members, categories=categories, items=items, available=available)
+                               members=members, categories=categories, items=items, available=available,
+                               entry_date=entry_date, entry_time=entry_time, from_day=from_day,
+                               selected_category=request.form.get("category_id", request.args.get("category", "")))
 
     @app.get("/transactions")
     def transactions():
@@ -441,6 +501,8 @@ def create_app(test_config=None):
             with conn:
                 conn.execute("DELETE FROM transactions WHERE id=?", (tx_id,))
             flash("Transaction deleted. Balances have been recalculated.", "success")
+        if request.form.get("return_day") == "1":
+            return redirect(url_for("day_view", day=row["tx_date"]))
         return redirect(url_for("transactions", month=row["tx_date"][:7]))
 
     @app.get("/reports")
@@ -481,7 +543,10 @@ def create_app(test_config=None):
                     if not name or not conn.execute("SELECT 1 FROM categories WHERE id=?", (category_id,)).fetchone():
                         raise ValueError("Enter an item name and select a category.")
                     with conn:
-                        conn.execute("INSERT INTO items(name,category_id) VALUES(?,?)", (name,category_id))
+                        if conn.execute("SELECT 1 FROM items WHERE name=? COLLATE NOCASE AND category_id=?",
+                                        (name, category_id)).fetchone():
+                            raise ValueError("This item is already saved in that category.")
+                        save_item(conn, name, category_id)
                 elif action == "house":
                     name = request.form.get("house_name", "").strip()[:60]
                     if not name:
@@ -514,13 +579,13 @@ def create_app(test_config=None):
         rows = all_transactions()
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["ID", "Date", "Type", "Amount BDT", "Member", "Category", "Item", "Quantity", "Note", "Related transaction ID"])
+        writer.writerow(["ID", "Date", "Time", "Type", "Amount BDT", "Member", "Category", "Item", "Quantity", "Note", "Related transaction ID"])
         for tx in reversed(rows):
             # Prefix user-supplied CSV content that looks like a spreadsheet formula.
             def safe(s):
                 s = str(s or "")
                 return "'" + s if s.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")) else s
-            writer.writerow([tx["id"], tx["tx_date"], KIND_NAMES[tx["kind"]],
+            writer.writerow([tx["id"], tx["tx_date"], tx["tx_time"], KIND_NAMES[tx["kind"]],
                              f"{Decimal(tx['amount']) / 100:.2f}", safe(tx["member_name"]),
                              safe(tx["category_name"]), safe(tx["item"]), safe(tx["quantity"]),
                              safe(tx["note"]), tx["related_id"] or ""])
