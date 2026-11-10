@@ -144,8 +144,8 @@ class LedgerTests(unittest.TestCase):
         entry_form = self.client.get('/record/expense')
         self.assertIn(b'data-name="Rice"', entry_form.data)
         self.assertIn(b'data-category="1"', entry_form.data)
-        self.record('expense', 20, item='Cumin', category_id='1')
-        self.record('expense', 25, item='cumin', category_id='1')
+        self.record('expense', 20, item='Cumin', category_id='1', remember_item='1')
+        self.record('expense', 25, item='cumin', category_id='1', remember_item='1')
         entry_form = self.client.get('/record/expense')
         self.assertIn(b'data-name="Cumin"', entry_form.data)
         import sqlite3
@@ -155,6 +155,79 @@ class LedgerTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(count, 1)
 
+
+    def test_bengali_grocery_presets_and_mixed_language_inputs(self):
+        form = self.client.get('/record/expense')
+        self.assertEqual(form.status_code, 200)
+        self.assertIn("চাল".encode(), form.data)
+        self.assertIn("পেঁয়াজ".encode(), form.data)
+        self.assertIn("Add this to my item list?".encode(), form.data)
+        self.record('expense', 140, item='দেশি পুঁইশাক', category_id='1',
+                    remember_item='1', quantity='২ আঁটি')
+        self.record('caretaker-expense', 85, item='শাক / Greens',
+                    category_id='1', remember_item='1')
+        updated = self.client.get('/record/expense')
+        self.assertIn("দেশি পুঁইশাক".encode(), updated.data)
+        self.assertIn("শাক / Greens".encode(), updated.data)
+        with self.app.app_context():
+            summary = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        self.assertEqual(summary['household'], 22500)
+        self.assertEqual(summary['current']['expenses_due'], 8500)
+
+    def test_new_unsaved_purchase_still_counts_but_not_added_to_shortcuts(self):
+        response = self.record('expense', 75, item='One-time repair widget', category_id='1')
+        self.assertIn(b'Saved successfully', response.data)
+        updated = self.client.get('/record/expense')
+        self.assertNotIn(b'data-name="One-time repair widget"', updated.data)
+        import sqlite3
+        with sqlite3.connect(self.app.config['DATABASE']) as connection:
+            recorded = connection.execute(
+                "SELECT amount,item FROM transactions WHERE kind='expense'"
+            ).fetchone()
+            saved = connection.execute(
+                "SELECT COUNT(*) FROM items WHERE name=?", ('One-time repair widget',)
+            ).fetchone()[0]
+        self.assertEqual(recorded, (7500, 'One-time repair widget'))
+        self.assertEqual(saved, 0)
+
+    def test_explicit_save_works_for_bengali_and_normalized_duplicates(self):
+        self.record('expense', 20, item='পুদিনা পাতা', category_id='1',
+                    remember_item='1')
+        self.record('expense', 30, item='পুদিনা পাতা', category_id='1',
+                    remember_item='1')
+        self.record('expense', 40, item='Cafe\u0301 spices', category_id='1',
+                    remember_item='1')
+        self.record('expense', 50, item='Café spices', category_id='1',
+                    remember_item='1')
+        import sqlite3
+        with sqlite3.connect(self.app.config['DATABASE']) as connection:
+            saved = connection.execute(
+                "SELECT name FROM items WHERE name IN (?,?,?)",
+                ('পুদিনা পাতা', 'Café spices', 'Cafe\u0301 spices')
+            ).fetchall()
+        self.assertEqual(sorted(name for name, in saved), ['Café spices', 'পুদিনা পাতা'])
+        form = self.client.get('/record/expense')
+        self.assertIn("পুদিনা পাতা".encode(), form.data)
+        self.assertIn(b'data-name="Caf', form.data)
+
+    def test_last_price_is_reference_and_not_an_automatic_amount(self):
+        self.record('expense', '120.50', item='Rice', category_id='1')
+        form = self.client.get('/record/expense')
+        self.assertIn(b'data-name="Rice"', form.data)
+        self.assertIn(b'data-last-cents="12050"', form.data)
+        self.assertIn(b'id="use-last-price"', form.data)
+        # Last price is only copied if the user deliberately chooses it.
+        self.assertIn(b'value="" required autofocus', form.data)
+
+    def test_save_and_add_another_preserves_date_and_category(self):
+        response = self.post('/record/expense', {
+            'tx_date': '2026-11-04', 'amount': '85',
+            'item': 'বেগুন', 'category_id': '1', 'keep_adding': '1'
+        }, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('date=2026-11-04', response.headers['Location'])
+        self.assertIn('category=1', response.headers['Location'])
+        self.assertIn('again=1', response.headers['Location'])
 
     def test_older_database_keeps_transactions_when_time_column_is_added(self):
         import sqlite3

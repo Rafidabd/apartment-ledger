@@ -85,3 +85,47 @@ a.calendar-day:focus-visible, .item-shortcut:focus-visible { outline:3px solid #
   .entry-date-time { grid-template-columns:1fr 1fr; }
 }
 @media print { .calendar-arrows,.day-actions,.day-entry-end form,.day-navigator { display:none!important; } }
+
+
+/* Fast item entry: Bengali/English search, reusable names and optional price hint. */
+.shortcut-search-row {
+  display:flex;align-items:center;gap:9px;margin:0 0 12px;
+}
+.shortcut-search-row input[type="search"] {
+  width:100%;min-width:0;flex:1;background:#fff;border:1px solid #d8e4df;
+  border-radius:12px;padding:11px 13px;font-size:13px;outline-offset:2px;
+}
+.shortcut-search-row input[type="search"]:focus {
+  border-color:#66a998;box-shadow:0 0 0 3px rgba(23,117,98,.1);
+}
+.shortcut-expand {
+  flex-shrink:0;cursor:pointer;background:#f0f8f4;color:#135f50;
+  border:1px solid #c8e2d8;border-radius:11px;padding:11px 12px;
+  font-size:12px;font-weight:750;
+}
+.shortcut-expand:hover { background:#e3f2eb; }
+#shortcut-count {display:block;margin-top:7px;font-size:11px;}
+.last-price-hint {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:10px;margin-top:12px;padding:11px 13px;background:#f3f9f6;
+  border:1px solid #d4e8de;border-radius:11px;
+  font-size:12px;color:#2b7363;font-weight:650;
+}
+.last-price-hint button {color:#145a4b;border:0;background:transparent;font-size:12px;font-weight:800;cursor:pointer;text-decoration:underline;}
+.remember-item-row {margin-top:0!important;}
+.remember-item-label {
+  display:flex;align-items:center;gap:12px;padding:14px 15px;border:1px solid #bedfd1;
+  background:#eef8f3;border-radius:13px;cursor:pointer;line-height:1.45;
+}
+.remember-item-label input[type="checkbox"] {
+  flex:0 0 auto;width:18px;height:18px;accent-color:#146753;
+}
+.remember-item-label span {display:flex;flex-direction:column;gap:4px;}
+.remember-item-label strong {color:#124c40;font-size:13px;}
+.remember-item-label small {font-weight:480;color:#55776d;font-size:11px;}
+.remember-item-row[hidden],.last-price-hint[hidden],.shortcut-expand[hidden] {display:none!important;}
+@media (max-width:760px) {
+  .shortcut-search-row input[type="search"]{font-size:16px;}
+  .remember-item-label {padding:13px;}
+  .last-price-hint {align-items:flex-start;}
+}

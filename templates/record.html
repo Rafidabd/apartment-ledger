@@ -12,7 +12,7 @@
       {% if kind in ['repayment','reimburse'] and not available %}
         <div class="empty"><strong>No outstanding balances found.</strong><p>Record an advance or caretaker-paid purchase first.</p><a class="btn btn-primary" href="{{ url_for('record',kind='advance') }}">Record an advance</a></div>
       {% else %}
-      <form action="{{ url_for('record',kind=kind) }}" method="post" id="entry-form">
+      <form action="{{ url_for('record',kind=kind) }}" method="post" id="entry-form" data-repeat="{{ '1' if request.args.get('again') == '1' else '0' }}">
         <input type="hidden" name="csrf" value="{{ csrf }}">{% if from_day %}<input type="hidden" name="return_day" value="1">{% endif %}
         <div class="form-grid">
           <div class="field"><label for="tx_date">Date & time</label><div class="entry-date-time"><input id="tx_date" aria-label="Date" name="tx_date" type="date" value="{{ entry_date }}" required><input id="tx_time" aria-label="Time (optional)" name="tx_time" type="time" value="{{ entry_time }}"></div><small class="field-tip">Time is optional for older entries.</small></div>
@@ -20,18 +20,32 @@
           {% if kind in ['expense','caretaker-expense'] %}
             <div class="field"><label for="category">Category</label><select name="category_id" id="category" required data-items-target="item-name">
               <option value="">Select category</option>{% for cat in categories %}<option value="{{ cat.id }}" {% if selected_category == cat.id|string or (not selected_category and cat.name == 'Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}</select></div>
-            <div class="field"><label for="item-name">Item or purchase</label><input name="item" id="item-name" list="saved-items" placeholder="e.g. Rice, eggs, electricity" value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off">
-              <datalist id="saved-items"></datalist></div>
+            <div class="field"><label for="item-name">Item / পণ্যের নাম</label><input name="item" id="item-name" list="saved-items" placeholder="Rice, ডাল, বেগুন, electricity..." value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off" lang="und">
+              <datalist id="saved-items"></datalist><small class="field-tip">Type in English or বাংলা using your keyboard.</small></div>
             <div class="field wide item-shortcuts" data-item-picker>
-              <div class="shortcut-head"><span><strong>Tap a saved item</strong> <span class="hint">or type something new above</span></span><a href="{{ url_for('settings') }}">Manage items ↗</a></div>
+              <div class="shortcut-head"><span><strong>Your saved items / পরিচিত বাজার</strong> <span class="hint">Tap once instead of typing.</span></span><a href="{{ url_for('settings') }}">Manage ↗</a></div>
+              <div class="shortcut-search-row">
+                <input type="search" id="saved-item-search" autocomplete="off" aria-label="Search saved items" placeholder="Find rice, চাল, ডাল, eggs…">
+                <button type="button" class="shortcut-expand" id="show-all-items" hidden>Show all</button>
+              </div>
               <div class="shortcut-list">
                 {% for saved in items %}
-                  <button type="button" class="item-shortcut" data-name="{{ saved.name }}" data-category="{{ saved.category_id }}" hidden>{{ saved.name }}</button>
+                  <button type="button" class="item-shortcut" data-name="{{ saved.name }}" data-category="{{ saved.category_id }}" data-last-cents="{{ saved.last_amount if saved.last_amount is not none else '' }}" hidden>{{ saved.name }}</button>
                 {% endfor %}
               </div>
-              <small class="field-tip item-shortcuts-empty" hidden>No items in this category yet. New purchases are saved automatically.</small>
+              <small class="field-tip item-shortcuts-empty" hidden>No saved items found in this category. Enter a name above.</small>
+              <small class="field-tip" id="shortcut-count" aria-live="polite"></small>
+              <div class="last-price-hint" id="last-price-hint" hidden>
+                <span id="last-price-text"></span><button type="button" id="use-last-price">Use last price</button>
+              </div>
             </div>
-            <div class="field wide"><label for="quantity">Quantity <span class="hint">optional</span></label><input id="quantity" name="quantity" maxlength="40" placeholder="e.g. 2 kg, 12 pcs" value="{{ request.form.get('quantity','') }}"></div>
+            <div class="field wide remember-item-row" id="remember-item-row">
+              <label class="remember-item-label" for="remember-item">
+                <input type="checkbox" id="remember-item" name="remember_item" value="1" {% if not request.form or request.form.get('remember_item') == '1' %}checked{% endif %}>
+                <span><strong>Add this to my item list?</strong><small>পরের বার এক ক্লিকে পাবেন · Save for next time</small></span>
+              </label>
+            </div>
+            <div class="field wide"><label for="quantity">Quantity <span class="hint">optional</span></label><input id="quantity" name="quantity" maxlength="40" placeholder="e.g. 2 kg / ২ কেজি, 12 pcs" value="{{ request.form.get('quantity','') }}"></div>
           {% elif kind == 'money' %}
             <div class="field wide"><label for="money_type">What kind of money?</label><select id="money_type" name="money_type" data-toggle="member-money"><option value="contribution" {% if request.form.get('money_type','contribution')=='contribution' %}selected{% endif %}>A roommate's monthly contribution</option><option value="income" {% if request.form.get('money_type')=='income' %}selected{% endif %}>Other money added to the shared fund</option></select></div>
             <div class="field wide" id="member-money"><label for="money-member">Which roommate?</label><select name="member_id" id="money-member"><option value="">Select roommate</option>{% for m in members %}<option value="{{ m.id }}" {% if request.form.get('member_id') == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select><div class="field-tip">Need someone new? <a href="{{ url_for('settings') }}">Add a roommate in Settings</a>.</div></div>

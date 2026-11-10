@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 import sqlite3
+import unicodedata
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
@@ -21,7 +22,10 @@ BASE = Path(__file__).resolve().parent
 DEFAULT_CATEGORIES = ["Groceries", "Rent", "Utilities", "Household supplies", "Maintenance", "Transport", "Other"]
 DEFAULT_ITEMS = {
     "Groceries": ["Rice", "Eggs", "Cooking oil", "Lentils", "Potatoes", "Onions",
-                  "Vegetables", "Chicken", "Fish", "Milk", "Bread", "Sugar", "Salt", "Tea"],
+                  "Vegetables", "Chicken", "Fish", "Milk", "Bread", "Sugar", "Salt", "Tea",
+                  "চাল", "ডাল", "আলু", "পেঁয়াজ", "রসুন", "আদা", "ডিম", "তেল",
+                  "লবণ", "চিনি", "কাঁচা মরিচ", "হলুদ", "মাছ", "মুরগি",
+                  "সবজি", "দুধ", "আটা", "চা", "পটল", "লাউ", "বেগুন"],
     "Utilities": ["Electricity", "Water", "Cooking gas", "Internet"],
     "Household supplies": ["Soap", "Detergent", "Tissue", "Dishwashing liquid"],
     "Rent": ["Monthly rent"],
@@ -90,12 +94,22 @@ def valid_time(value: str) -> str:
         raise ValueError("Choose a valid time, such as 09:30.") from None
 
 
+def normalize_item_name(name):
+    """Keep Bengali combining marks and other Unicode item names consistent."""
+    return unicodedata.normalize("NFC", (name or "").strip())
+
+
 def save_item(conn, name, category_id):
-    """Save one reusable item per category, regardless of capitalization."""
-    conn.execute("""INSERT INTO items(name,category_id)
-                    SELECT ?,? WHERE NOT EXISTS(
-                        SELECT 1 FROM items WHERE category_id=? AND name=? COLLATE NOCASE)""",
-                 (name, category_id, category_id, name))
+    """Save a shortcut only once per category, including Unicode-equivalent names."""
+    name = normalize_item_name(name)
+    if not name:
+        return False
+    key = name.casefold()
+    for row in conn.execute("SELECT name FROM items WHERE category_id=?", (category_id,)):
+        if normalize_item_name(row["name"]).casefold() == key:
+            return False
+    conn.execute("INSERT INTO items(name,category_id) VALUES (?,?)", (name, category_id))
+    return True
 
 
 def create_app(test_config=None):
@@ -387,7 +401,12 @@ def create_app(test_config=None):
         members = conn.execute("SELECT * FROM members WHERE active=1 ORDER BY name").fetchall()
         categories = conn.execute("SELECT * FROM categories ORDER BY name").fetchall()
         items = conn.execute("""
-            SELECT i.name, i.category_id, c.name AS category, COUNT(t.id) AS used
+            SELECT i.name, i.category_id, c.name AS category, COUNT(t.id) AS used,
+              (SELECT recent.amount FROM transactions recent
+               WHERE recent.category_id=i.category_id AND recent.item=i.name COLLATE NOCASE
+                 AND recent.kind IN ('expense','caretaker_expense')
+               ORDER BY recent.tx_date DESC, recent.tx_time DESC, recent.id DESC LIMIT 1
+              ) AS last_amount
             FROM items i JOIN categories c ON c.id=i.category_id
             LEFT JOIN transactions t ON t.category_id=i.category_id
                AND t.item=i.name COLLATE NOCASE AND t.kind IN ('expense','caretaker_expense')
@@ -416,7 +435,7 @@ def create_app(test_config=None):
                 tx_time = valid_time(request.form.get("tx_time", ""))
                 amount = parse_amount(request.form.get("amount", ""))
                 note = request.form.get("note", "").strip()[:300]
-                item = request.form.get("item", "").strip()[:120]
+                item = normalize_item_name(request.form.get("item", ""))[:120]
                 quantity = request.form.get("quantity", "").strip()[:40]
                 member_id, category_id, related_id = None, None, None
                 if kind in {"expense", "caretaker-expense"}:
@@ -463,12 +482,13 @@ def create_app(test_config=None):
                       (tx_date,tx_time,kind,amount,member_id,category_id,item,quantity,note,related_id)
                       VALUES(?,?,?,?,?,?,?,?,?,?)""",
                       (tx_date, tx_time, tx_kind, amount, member_id, category_id, item, quantity, note, related_id))
-                    if kind in {"expense", "caretaker-expense"}:
+                    if kind in {"expense", "caretaker-expense"} and request.form.get("remember_item") == "1":
                         save_item(conn, item, category_id)
                 flash("Saved successfully.", "success")
                 if request.form.get("keep_adding") == "1" and kind in {"expense", "caretaker-expense"}:
                     return redirect(url_for("record", kind=kind, date=tx_date,
-                                            category=category_id, from_day="1" if from_day else None))
+                                            category=category_id, from_day="1" if from_day else None,
+                                            again="1"))
                 if from_day:
                     return redirect(url_for("day_view", day=tx_date))
                 return redirect(url_for("dashboard", month=tx_date[:7]))
@@ -538,15 +558,13 @@ def create_app(test_config=None):
                     with conn:
                         conn.execute("INSERT INTO categories(name) VALUES(?)", (name,))
                 elif action == "item":
-                    name = request.form.get("name", "").strip()[:120]
+                    name = normalize_item_name(request.form.get("name", ""))[:120]
                     category_id = request.form.get("category_id", type=int)
                     if not name or not conn.execute("SELECT 1 FROM categories WHERE id=?", (category_id,)).fetchone():
                         raise ValueError("Enter an item name and select a category.")
                     with conn:
-                        if conn.execute("SELECT 1 FROM items WHERE name=? COLLATE NOCASE AND category_id=?",
-                                        (name, category_id)).fetchone():
+                        if not save_item(conn, name, category_id):
                             raise ValueError("This item is already saved in that category.")
-                        save_item(conn, name, category_id)
                 elif action == "house":
                     name = request.form.get("house_name", "").strip()[:60]
                     if not name:
