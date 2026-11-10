@@ -108,6 +108,53 @@ class LedgerTests(unittest.TestCase):
             summary = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
         self.assertEqual(summary['current']['fund_due'], 7000)
 
+    def test_calendar_opens_day_and_groups_entries_by_time(self):
+        self.record('expense', 450, tx_date='2026-11-11', tx_time='09:20', item='Rice', category_id='1')
+        self.record('expense', 120, tx_date='2026-11-11', tx_time='17:50', item='Eggs', category_id='1')
+        self.record('expense', 75, tx_date='2026-11-12', tx_time='10:10', item='Milk', category_id='1')
+        calendar = self.client.get('/calendar?month=2026-11')
+        self.assertEqual(calendar.status_code, 200)
+        self.assertIn(b'/day/2026-11-11', calendar.data)
+        self.assertIn('৳570'.encode(), calendar.data)
+        day = self.client.get('/day/2026-11-11')
+        self.assertEqual(day.status_code, 200)
+        self.assertIn(b'09:20', day.data)
+        self.assertIn(b'17:50', day.data)
+        self.assertLess(day.data.index(b'17:50'), day.data.index(b'09:20'))
+        self.assertIn('৳570'.encode(), day.data)
+        self.assertNotIn(b'Milk', day.data)
+        self.assertEqual(self.client.get('/day/not-a-date').status_code, 404)
+
+    def test_day_entry_keeps_selected_date_after_saving(self):
+        selected = self.client.get('/record/expense?date=2026-11-04&from_day=1')
+        self.assertEqual(selected.status_code, 200)
+        self.assertIn(b'value="2026-11-04"', selected.data)
+        response = self.post('/record/expense', {
+            'tx_date': '2026-11-04', 'tx_time': '08:30',
+            'amount': '180', 'item': 'Potatoes', 'category_id': '1',
+            'return_day': '1'
+        }, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].endswith('/day/2026-11-04'))
+        self.assertIn(b'Potatoes', self.client.get('/day/2026-11-04').data)
+        invalid = self.record('expense', 50, tx_time='28:00', item='Eggs', category_id='1')
+        self.assertIn(b'Choose a valid time', invalid.data)
+
+    def test_saved_items_are_tappable_and_case_insensitive(self):
+        entry_form = self.client.get('/record/expense')
+        self.assertIn(b'data-name="Rice"', entry_form.data)
+        self.assertIn(b'data-category="1"', entry_form.data)
+        self.record('expense', 20, item='Cumin', category_id='1')
+        self.record('expense', 25, item='cumin', category_id='1')
+        entry_form = self.client.get('/record/expense')
+        self.assertIn(b'data-name="Cumin"', entry_form.data)
+        import sqlite3
+        with sqlite3.connect(self.app.config['DATABASE']) as connection:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM items WHERE name = 'cumin' COLLATE NOCASE AND category_id=1"
+            ).fetchone()[0]
+        self.assertEqual(count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()
