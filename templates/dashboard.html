@@ -16,6 +16,7 @@
       <div class="card stat"><div class="stat-icon coral">↗</div><p>Household spending</p><h2>{{ money(data.household) }}</h2><small>Includes caretaker-paid purchases</small></div>
     </div>
   </section>
+  <div class="basket-cta"><div><strong>Shopping trip with multiple items?</strong><p>Add a whole market list together, from চাল and ডাল to vegetables and eggs. One save.</p></div><a class="btn btn-primary" href="{{ url_for('basket') }}">＋ Open shopping basket</a></div>
   <section class="action-grid" aria-label="Quick actions">
     <a class="action primary-action" href="{{ url_for('record',kind='expense') }}"><span class="action-icon">＋</span><span><strong>Add expense</strong><small>Record today's purchases</small></span><b>↗</b></a>
     <a class="action" href="{{ url_for('record',kind='money') }}"><span class="action-icon">↙</span><span><strong>Add money</strong><small>Parent contributions & other income</small></span><b>↗</b></a>
