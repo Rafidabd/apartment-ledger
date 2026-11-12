@@ -20,8 +20,8 @@
           {% if kind in ['expense','caretaker-expense'] %}
             <div class="field"><label for="category">Category</label><select name="category_id" id="category" required data-items-target="item-name">
               <option value="">Select category</option>{% for cat in categories %}<option value="{{ cat.id }}" {% if selected_category == cat.id|string or (not selected_category and cat.name == 'Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}</select></div>
-            <div class="field"><label for="item-name">Item / পণ্যের নাম</label><input name="item" id="item-name" list="saved-items" placeholder="Rice, ডাল, বেগুন, electricity..." value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off" lang="und">
-              <datalist id="saved-items"></datalist><small class="field-tip">Type in English or বাংলা using your keyboard.</small></div>
+            <div class="field"><label for="item-name">Item / পণ্যের নাম</label><input name="item" id="item-name" data-item-autocomplete placeholder="Rice, ডাল, বেগুন, electricity..." value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off" lang="und">
+              <small class="field-tip">Type in English or বাংলা using your keyboard.</small></div>
             <div class="field wide item-shortcuts" data-item-picker>
               <div class="shortcut-head"><span><strong>Your saved items / পরিচিত বাজার</strong> <span class="hint">Tap once instead of typing.</span></span><a href="{{ url_for('settings') }}">Manage ↗</a></div>
               <div class="shortcut-search-row">
