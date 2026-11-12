@@ -21,3 +21,7 @@ jobs:
           node --check static/app.js
           node --check static/basket.js
           node --check static/item-suggest.js
+          node --check demo/demo.js
+          node --check tests/verify_demo.cjs
+      - name: Verify fictional public demo
+        run: node tests/verify_demo.cjs

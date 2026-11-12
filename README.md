@@ -4,6 +4,12 @@ We share an apartment, contribute money separately, and have a caretaker who han
 
 Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant for quick entry, not full accounting software.
 
+## Explore the fictional demo
+
+**[Open the interactive demo files](demo/index.html)** — browse a separate read-only preview built with fictional roommates and financial transactions. It includes the dashboard, daily calendar, search, caretaker account, roommate settlements and monthly reports. **No real household data or backend is involved.**
+
+To preview it locally, open `demo/index.html` in a browser. For a public shareable link, use the manual GitHub Pages workflow described in **[Sharing and deployment](docs/sharing-and-deployment.md)**. The actual Flask app and its private SQLite database remain local; the demo is not a live multiuser ledger.
+
 ## What it does
 
 - Record groceries, bills, rent, and other expenses with a category, item, price, optional quantity, and optional purchase time.
@@ -120,4 +126,4 @@ These tests cover the fund/caretaker split, partial repayments, caretaker-page r
 
 ## Current limits
 
-The app doesn't yet include multiuser login, receipt photos, bank imports, contribution targets, or automatic cloud sync. Corrections currently support household purchases only; advances and repayments still use the existing delete/re-enter workflow to protect linked balances. Expense counts mean **number of recorded purchases**, not how much of an item was physically consumed. All amounts are in BDT.
+The app doesn't yet include multiuser login, receipt photos, bank imports, or automatic cloud sync. Contribution targets are supported for each roommate and month, but do not automatically roll over to a later month. Corrections currently support household purchases only; advances and repayments still use the existing delete/re-enter workflow to protect linked balances. Expense counts mean **number of recorded purchases**, not how much of an item was physically consumed. All amounts are in BDT.
