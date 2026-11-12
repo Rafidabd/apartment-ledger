@@ -4,6 +4,7 @@ from __future__ import annotations
 import calendar as pycalendar
 import csv
 import io
+import json
 import os
 import re
 import secrets
@@ -170,6 +171,12 @@ def create_app(test_config=None):
               created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
           CREATE INDEX IF NOT EXISTS idx_tx_date ON transactions(tx_date);
           CREATE INDEX IF NOT EXISTS idx_tx_related ON transactions(related_id);
+          CREATE TABLE IF NOT EXISTS expense_corrections (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              tx_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+              corrected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              previous TEXT NOT NULL, updated TEXT NOT NULL);
+          CREATE INDEX IF NOT EXISTS idx_expense_corrections_tx ON expense_corrections(tx_id);
         """)
         # Upgrade an existing local database without losing earlier transactions.
         if "tx_time" not in {row["name"] for row in conn.execute("PRAGMA table_info(transactions)")}: 
@@ -498,6 +505,164 @@ def create_app(test_config=None):
                                members=members, categories=categories, items=items, available=available,
                                entry_date=entry_date, entry_time=entry_time, from_day=from_day,
                                selected_category=request.form.get("category_id", request.args.get("category", "")))
+
+    @app.route("/basket", methods=["GET", "POST"])
+    def basket():
+        """Record a whole grocery trip in one atomic operation."""
+        conn = db()
+        categories = conn.execute("SELECT id,name FROM categories ORDER BY name").fetchall()
+        saved_items = [dict(row) for row in conn.execute(
+            """SELECT name,category_id FROM items ORDER BY name COLLATE NOCASE"""
+        ).fetchall()]
+        chosen_day = request.args.get("date")
+        if chosen_day:
+            try:
+                chosen_day = valid_date(chosen_day)
+            except ValueError:
+                abort(400, description="Invalid shopping date.")
+        tx_date = request.form.get("tx_date", chosen_day or date.today().isoformat())
+        tx_time = request.form.get("tx_time", datetime.now().strftime("%H:%M")
+            if tx_date == date.today().isoformat() else "")
+        payer = request.form.get("payer", "shared")
+        rows = []
+        if request.method == "POST":
+            names = request.form.getlist("item[]")
+            amounts = request.form.getlist("amount[]")
+            category_ids = request.form.getlist("category_id[]")
+            quantities = request.form.getlist("quantity[]")
+            remember_flags = request.form.getlist("remember[]")
+            for i, name in enumerate(names):
+                rows.append({
+                    "item": name,
+                    "amount": amounts[i] if i < len(amounts) else "",
+                    "category_id": category_ids[i] if i < len(category_ids) else "",
+                    "quantity": quantities[i] if i < len(quantities) else "",
+                    "remember": remember_flags[i] if i < len(remember_flags) else "1",
+                })
+            try:
+                tx_date = valid_date(tx_date)
+                tx_time = valid_time(tx_time)
+                if payer not in {"shared", "caretaker"}:
+                    raise ValueError("Choose who paid for the purchases.")
+                if not 1 <= len(names) <= 30 or not (
+                    len(names) == len(amounts) == len(category_ids) ==
+                    len(quantities) == len(remember_flags)
+                ):
+                    raise ValueError("Add between 1 and 30 complete items.")
+                allowed = {row["id"] for row in categories}
+                prepared = []
+                for index, row in enumerate(rows, start=1):
+                    item = normalize_item_name(row["item"])[:120]
+                    qty = row["quantity"].strip()[:40]
+                    if not item:
+                        raise ValueError(f"Item {index}: enter a name.")
+                    try:
+                        category_id = int(row["category_id"])
+                    except (TypeError, ValueError):
+                        raise ValueError(f"Item {index}: select a category.") from None
+                    if category_id not in allowed:
+                        raise ValueError(f"Item {index}: select a valid category.")
+                    if row["remember"] not in {"0", "1"}:
+                        raise ValueError(f"Item {index}: invalid saved-item choice.")
+                    try:
+                        amount = parse_amount(row["amount"])
+                    except ValueError as e:
+                        raise ValueError(f"Item {index}: {e}") from None
+                    prepared.append((item, amount, category_id, qty, row["remember"] == "1"))
+                note = request.form.get("note", "").strip()[:300]
+                kind = "expense" if payer == "shared" else "caretaker_expense"
+                with conn:
+                    for item, amount, category_id, quantity, remember in prepared:
+                        conn.execute(
+                            """INSERT INTO transactions
+                               (tx_date,tx_time,kind,amount,category_id,item,quantity,note)
+                               VALUES (?,?,?,?,?,?,?,?)""",
+                            (tx_date, tx_time, kind, amount, category_id, item, quantity, note)
+                        )
+                        if remember:
+                            save_item(conn, item, category_id)
+                flash(f"Saved {len(prepared)} purchases together.", "success")
+                return redirect(url_for("day_view", day=tx_date))
+            except ValueError as e:
+                flash(str(e), "error")
+        if not rows:
+            rows = [{"item": "", "amount": "", "category_id": "", "quantity": "", "remember": "1"}]
+        return render_template("basket.html", title="Quick shopping basket",
+                               categories=categories, saved_items=saved_items, rows=rows,
+                               entry_date=tx_date, entry_time=tx_time, payer=payer)
+
+    @app.route("/expenses/<int:tx_id>/edit", methods=["GET", "POST"])
+    def edit_expense(tx_id):
+        """Correct a recorded purchase without altering its funding source."""
+        conn = db()
+        tx = conn.execute("SELECT * FROM transactions WHERE id=?", (tx_id,)).fetchone()
+        if tx is None or tx["kind"] not in {"expense", "caretaker_expense"}:
+            abort(404)
+        categories = conn.execute("SELECT id,name FROM categories ORDER BY name").fetchall()
+        fields = ("tx_date", "tx_time", "amount", "category_id", "item", "quantity", "note")
+        original = {key: tx[key] for key in fields}
+        from_day = request.args.get("from_day") == "1" or request.form.get("return_day") == "1"
+        if request.method == "POST":
+            try:
+                new_date = valid_date(request.form.get("tx_date"))
+                new_time = valid_time(request.form.get("tx_time", ""))
+                new_amount = parse_amount(request.form.get("amount", ""))
+                category_id = request.form.get("category_id", type=int)
+                allowed = {row["id"] for row in categories}
+                if category_id not in allowed:
+                    raise ValueError("Choose a valid category.")
+                item = normalize_item_name(request.form.get("item"))[:120]
+                if not item:
+                    raise ValueError("Enter the name of the purchase.")
+                quantity = request.form.get("quantity", "").strip()[:40]
+                note = request.form.get("note", "").strip()[:300]
+                if tx["kind"] == "caretaker_expense":
+                    settled = conn.execute(
+                        "SELECT COALESCE(SUM(amount),0) FROM transactions WHERE related_id=?",
+                        (tx_id,)
+                    ).fetchone()[0]
+                    if new_amount < settled:
+                        raise ValueError("Expense amount cannot be less than caretaker reimbursements already paid.")
+                    earliest = conn.execute(
+                        "SELECT MIN(tx_date) FROM transactions WHERE related_id=?", (tx_id,)
+                    ).fetchone()[0]
+                    if earliest is not None and new_date > earliest:
+                        raise ValueError("Expense date cannot come after an existing reimbursement.")
+                updated = dict(tx_date=new_date, tx_time=new_time, amount=new_amount,
+                               category_id=category_id, item=item, quantity=quantity, note=note)
+                if updated != original:
+                    with conn:
+                        conn.execute("""UPDATE transactions
+                                        SET tx_date=?,tx_time=?,amount=?,category_id=?,
+                                            item=?,quantity=?,note=? WHERE id=?""",
+                                     (new_date, new_time, new_amount, category_id, item, quantity, note, tx_id))
+                        conn.execute(
+                            "INSERT INTO expense_corrections(tx_id,previous,updated) VALUES(?,?,?)",
+                            (tx_id, json.dumps(original, ensure_ascii=False),
+                             json.dumps(updated, ensure_ascii=False))
+                        )
+                        if request.form.get("remember_item") == "1":
+                            save_item(conn, item, category_id)
+                    flash("Purchase corrected. Balances and reports have been recalculated.", "success")
+                else:
+                    flash("No changes needed.", "success")
+                if from_day:
+                    return redirect(url_for("day_view", day=new_date))
+                return redirect(url_for("transactions", month=new_date[:7]))
+            except ValueError as e:
+                flash(str(e), "error")
+        edits = [
+            {"at": row["corrected_at"], "before": json.loads(row["previous"]),
+             "after": json.loads(row["updated"])}
+            for row in conn.execute(
+                "SELECT * FROM expense_corrections WHERE tx_id=? ORDER BY id DESC LIMIT 8",
+                (tx_id,)
+            )
+        ]
+        return render_template("edit_expense.html", title="Correct a purchase",
+                               tx=tx, categories=categories,
+                               amount_text=f"{Decimal(tx['amount']) / 100:.2f}",
+                               from_day=from_day, edits=edits)
 
     @app.get("/transactions")
     def transactions():
