@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><p class="eyebrow">MONTHLY SETTLEMENTS</p><h1>Roommate accounts</h1>
+    <p class="subtitle">Who contributed, who took an advance, and what still needs to be settled.</p></div>
+  <div class="head-controls">
+    <form method="get" class="month-select">
+      <label for="settlement-month">Month</label>
+      <input type="month" id="settlement-month" name="month" value="{{ data.month }}"
+             onchange="this.form.submit()">
+    </form>
+    <a href="{{ url_for('reports',month=data.month) }}" class="btn btn-outline">Full report ↗</a>
+  </div>
+</div>
+<div class="settlement-intro">
+  <strong>One apartment fund, separate personal balances.</strong>
+  <p>Contributions are money already received. A monthly contribution target is just a planned amount until it is actually paid. Personal loans from the caretaker and advances from the shared fund remain separate.</p>
+</div>
+<div class="settlement-summary">
+  <div class="card settle-summary-box"><span>Received contributions</span><strong>{{ money(totals.contributed) }}</strong><small>{{ data.label }}</small></div>
+  <div class="card settle-summary-box"><span>Contributions still expected</span><strong>{{ money(totals.contribution_gap) }}</strong><small>Only for roommates with targets set</small></div>
+  <div class="card settle-summary-box"><span>Shared-fund advances unpaid</span><strong>{{ money(totals.fund_due) }}</strong><small>Outstanding at month-end</small></div>
+  <div class="card settle-summary-box"><span>Caretaker personal loans unpaid</span><strong>{{ money(totals.caretaker_due) }}</strong><small>Outstanding at month-end</small></div>
+</div>
+<section class="card panel settlement-settings">
+  <div class="panel-title">
+    <div><h3>Expected monthly contributions</h3>
+      <p>Optional: assign a target to each roommate for {{ data.label }}. Leave blank if no target is set. Enter 0 for a confirmed zero contribution.</p>
+    </div>
+  </div>
+  {% if members %}
+  <form method="post" action="{{ url_for('settlements') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="month" value="{{ data.month }}">
+    <div class="settlement-target-grid">
+      {% for member in members %}
+        <label class="settlement-target">
+          <span>{{ member.name }}{% if not member.active %} <small>(inactive)</small>{% endif %}</span>
+          <div><span>৳</span><input type="number" step="0.01" min="0" name="target_{{ member.id }}"
+              value="{{ request.form.get('target_' ~ member.id, member.target_input) }}" inputmode="decimal"
+              placeholder="Not set" aria-label="Monthly target for {{ member.name }}"></div>
+        </label>
+      {% endfor %}
+    </div>
+    <div class="settlement-form-footer"><span>Targets are planning figures — saving them doesn't change the fund balance.</span><button class="btn btn-primary" type="submit">Save monthly targets</button></div>
+  </form>
+  {% else %}
+    <div class="empty">No roommates yet. <a href="{{ url_for('settings') }}">Add your roommates in Settings.</a></div>
+  {% endif %}
+</section>
+
+<section class="card panel settlement-members-panel">
+  <div class="panel-title">
+    <div><h3>Individual settlements</h3><p>Month's contributions and advances, plus unpaid balances at this month's end.</p></div>
+    <a href="{{ url_for('caretaker_view',month=data.month) }}">Caretaker account ↗</a>
+  </div>
+  {% if members %}
+  <div class="settlement-member-grid">
+    {% for member in members %}
+    <article class="settlement-member-card">
+      <div class="settlement-member-head"><div><strong>{{ member.name }}</strong><small>{{ 'Currently active' if member.active else 'Inactive roommate (past records retained)' }}</small></div>
+        {% if member.target is none %}<span class="settlement-status muted">No target set</span>
+        {% elif member.contribution_gap > 0 %}<span class="settlement-status pending">Contribution pending</span>
+        {% else %}<span class="settlement-status complete">Target met</span>{% endif %}
+      </div>
+      <div class="settlement-member-metrics">
+        <div><span>Expected contribution</span><strong>{{ money(member.target) if member.target is not none else 'Not set' }}</strong></div>
+        <div><span>Received this month</span><strong>{{ money(member.contributed) }}</strong></div>
+        <div><span>Unpaid contribution</span><strong>{{ money(member.contribution_gap) if member.contribution_gap is not none else 'Not calculated' }}</strong></div>
+        <div><span>Shared-fund advance due</span><strong>{{ money(member.fund_due) }}</strong></div>
+        <div><span>Personal caretaker loan due</span><strong>{{ money(member.caretaker_due) }}</strong></div>
+      </div>
+      <div class="settlement-member-footer">
+        <div><small>Known amount to follow up</small><strong>{{ money(member.to_follow_up) }}</strong></div>
+        <div class="settlement-member-actions">
+          <a href="{{ url_for('record',kind='money') }}">Contribution ↗</a>
+          <a href="{{ url_for('caretaker_view',month=data.month) }}">Advances ↗</a>
+        </div>
+      </div>
+      <details class="settlement-month-movements">
+        <summary>See this month's borrowing and repayments</summary>
+        <div><span>Borrowed from shared fund</span><strong>{{ money(member.fund_borrowed) }}</strong></div>
+        <div><span>Returned to shared fund</span><strong>{{ money(member.fund_repaid) }}</strong></div>
+        <div><span>Borrowed from caretaker</span><strong>{{ money(member.caretaker_borrowed) }}</strong></div>
+        <div><span>Repaid to caretaker</span><strong>{{ money(member.caretaker_repaid) }}</strong></div>
+      </details>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}<div class="empty">No roommates have been added yet.</div>{% endif %}
+</section>
+<div class="settlement-explain">
+  <strong>Important distinction</strong>
+  <p>“Known amount to follow up” is the unpaid contribution target (when set) plus outstanding personal and shared-fund advances. It is a follow-up figure, not an expense or a cash transaction. Targets are defined per month and are not automatically carried into the next month; loans do carry forward until repaid. The caretaker's household reimbursements belong to the collective fund and are shown separately in the caretaker account.</p>
+</div>
+{% endblock %}

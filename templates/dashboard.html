@@ -27,6 +27,7 @@
     <div><strong>Borrowing or settling money with the caretaker?</strong><p>Track his personal loans, shared-fund advances, reimbursements and purchases in one place.</p></div>
     <a class="btn btn-outline" href="{{ url_for('caretaker_view',month=data.month) }}">Open caretaker account ↗</a>
   </div>
+  <div class="caretaker-dashboard-link"><div><strong>Monthly roommate settlements</strong><p>Review contributions, expected payments, individual loans, repayments, and unpaid balances.</p></div><a class="btn btn-outline" href="{{ url_for('settlements',month=data.month) }}">Open roommate accounts ↗</a></div>
   <section class="small-stat-grid">
     <div class="card small-stat"><span>↗ Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Roommates owe the shared fund</small></div>
     <div class="card small-stat"><span>⇄ Caretaker advances unpaid</span><strong>{{ money(data.current.caretaker_due) }}</strong><small>Roommates owe the caretaker</small></div>

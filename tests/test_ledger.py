@@ -438,5 +438,103 @@ class LedgerTests(unittest.TestCase):
 
 
 
+    def test_roommate_month_targets_contributions_and_distinct_advance_debts(self):
+        """Contributions are not repayments and caretaker loans aren't spending."""
+        response = self.post('/settlements', {
+            'month': '2026-11', 'target_1': '5000', 'target_2': '7000'
+        }, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/settlements?month=2026-11', response.headers['Location'])
+        self.record('money', 3000, money_type='contribution', member_id='1')
+        self.record('money', 6000, money_type='contribution', member_id='2')
+        self.record('advance', 1000, source='advance_fund', member_id='1')
+        self.record('advance', 500, source='advance_caretaker', member_id='2')
+        self.record('repayment', 200, related_id='3')  # Alice repays fund
+        self.record('repayment', 100, related_id='4')  # Bob repays caretaker
+        page = self.client.get('/settlements?month=2026-11')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'Roommate accounts', page.data)
+        self.assertIn(b'Alice', page.data)
+        self.assertIn(b'Bob', page.data)
+        with self.app.app_context():
+            settlement = self.app.extensions['ledger_tools']['settlement_data']('2026-11')
+        people = {person['name']: person for person in settlement['members']}
+        self.assertEqual(people['Alice']['target'], 500000)
+        self.assertEqual(people['Alice']['contributed'], 300000)
+        self.assertEqual(people['Alice']['contribution_gap'], 200000)
+        self.assertEqual(people['Alice']['fund_due'], 80000)
+        self.assertEqual(people['Alice']['caretaker_due'], 0)
+        self.assertEqual(people['Alice']['to_follow_up'], 280000)
+        self.assertEqual(people['Bob']['contribution_gap'], 100000)
+        self.assertEqual(people['Bob']['caretaker_due'], 40000)
+        self.assertEqual(people['Bob']['to_follow_up'], 140000)
+        self.assertEqual(settlement['totals']['contributed'], 900000)
+        self.assertEqual(settlement['totals']['contribution_gap'], 300000)
+        self.assertEqual(settlement['totals']['fund_due'], 80000)
+        self.assertEqual(settlement['totals']['caretaker_due'], 40000)
+        self.assertEqual(settlement['totals']['follow_up'], 420000)
+        self.assertEqual(settlement['data']['household'], 0)
+        report = self.client.get('/reports?month=2026-11')
+        self.assertEqual(report.status_code, 200)
+        self.assertIn(b'Roommate settlement summary', report.data)
+        self.assertIn('৳3,000'.encode(), report.data)
+        self.assertEqual(settlement['data']['closing'], 820000)
+
+    def test_target_is_month_specific_and_loan_balance_rolls_forward(self):
+        self.post('/settlements', {'month': '2026-11', 'target_1': '1000', 'target_2': ''})
+        self.record('advance', 400, source='advance_caretaker', member_id='1', tx_date='2026-11-30')
+        self.record('repayment', 100, related_id='1', tx_date='2026-12-02')
+        with self.app.app_context():
+            settle = self.app.extensions['ledger_tools']['settlement_data']
+            november = settle('2026-11')
+            december = settle('2026-12')
+        self.assertEqual(november['members'][0]['target'], 100000)
+        self.assertIsNone(december['members'][0]['target'])
+        self.assertIsNone(december['members'][0]['contribution_gap'])
+        self.assertEqual(november['members'][0]['caretaker_due'], 40000)
+        self.assertEqual(december['members'][0]['caretaker_due'], 30000)
+        self.assertEqual(december['members'][0]['to_follow_up'], 30000)
+        self.assertEqual(november['totals']['targets_set'], 1)
+        self.assertEqual(december['totals']['targets_set'], 0)
+
+    def test_target_zero_blank_and_invalid_batch_do_not_change_cash(self):
+        self.record('money', 900, money_type='contribution', member_id='1')
+        ok = self.post('/settlements', {'month': '2026-11', 'target_1': '0', 'target_2': '500.50'})
+        self.assertIn(b'Monthly contribution targets saved', ok.data)
+        with self.app.app_context():
+            initial = self.app.extensions['ledger_tools']['settlement_data']('2026-11')
+        self.assertEqual(initial['members'][0]['target'], 0)
+        self.assertEqual(initial['members'][0]['contribution_gap'], 0)
+        self.assertEqual(initial['members'][1]['target'], 50050)
+        self.assertEqual(initial['data']['closing'], 90000)
+        invalid = self.post('/settlements', {
+            'month': '2026-11', 'target_1': '300', 'target_2': '-200'
+        })
+        self.assertIn(b'Please enter an amount greater than zero', invalid.data)
+        with self.app.app_context():
+            unchanged = self.app.extensions['ledger_tools']['settlement_data']('2026-11')
+        self.assertEqual([m['target'] for m in unchanged['members']], [0, 50050])
+        self.post('/settlements', {'month': '2026-11', 'target_1': '', 'target_2': '500.50'})
+        with self.app.app_context():
+            cleared = self.app.extensions['ledger_tools']['settlement_data']('2026-11')
+        self.assertIsNone(cleared['members'][0]['target'])
+        self.assertEqual(cleared['data']['closing'], 90000)
+        self.assertEqual(self.client.get('/settlements?month=2026-99').status_code, 400)
+
+    def test_monthly_member_settlement_matches_fund_and_caretaker_totals(self):
+        self.record('advance', 250, source='advance_fund', member_id='1')
+        self.record('advance', 300, source='advance_fund', member_id='2')
+        self.record('advance', 100, source='advance_caretaker', member_id='1')
+        self.record('caretaker-expense', 75, category_id='1', item='ডাল')
+        with self.app.app_context():
+            result = self.app.extensions['ledger_tools']['settlement_data']('2026-11')
+        self.assertEqual(result['totals']['fund_due'], result['data']['current']['fund_due'])
+        self.assertEqual(result['totals']['caretaker_due'], result['data']['current']['caretaker_due'])
+        # Household reimbursements are collective and never assigned to roommates.
+        self.assertEqual(result['data']['current']['expenses_due'], 7500)
+        self.assertEqual(result['totals']['follow_up'], 65000)
+
+
+
 if __name__ == '__main__':
     unittest.main()

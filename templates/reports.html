@@ -7,6 +7,19 @@
     <div class="card small-stat"><span>Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Owed by roommates as of month-end</small></div>
     <div class="card small-stat"><span>Caretaker amounts unpaid</span><strong>{{ money(data.current.caretaker_due + data.current.expenses_due) }}</strong><small>Personal advances + shared purchases</small></div>
   </section>
+  <section class="card panel settlement-report-section">
+    <div class="panel-title"><div><h3>Roommate settlement summary</h3>
+      <p>Personal payment targets and unpaid advances, calculated at month-end.</p></div>
+      <a href="{{ url_for('settlements',month=data.month) }}">Roommate accounts ↗</a>
+    </div>
+    <div class="settlement-report-totals">
+      <div><span>Contribution targets set</span><strong>{{ settlement.totals.targets_set }} / {{ settlement.totals.members }}</strong></div>
+      <div><span>Recorded contributions</span><strong>{{ money(settlement.totals.contributed) }}</strong></div>
+      <div><span>Unpaid contribution targets</span><strong>{{ money(settlement.totals.contribution_gap) }}</strong></div>
+      <div><span>Outstanding roommate advances</span><strong>{{ money(settlement.totals.fund_due + settlement.totals.caretaker_due) }}</strong></div>
+    </div>
+    <p class="care-footnote">Only members with an explicit target are counted for contribution gaps. Advances are already represented by the caretaker and fund balances below; don't add these report figures to household expenses.</p>
+  </section>
   <section class="card panel caretaker-report-section">
     <div class="panel-title"><div><h3>Caretaker and shared-fund settlements</h3><p>Money exchanges stay separate from household consumption.</p></div>
       <a href="{{ url_for('caretaker_view', month=data.month) }}">Detailed caretaker account ↗</a>

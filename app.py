@@ -157,6 +157,10 @@ def create_app(test_config=None):
               name TEXT NOT NULL UNIQUE COLLATE NOCASE, active INTEGER NOT NULL DEFAULT 1);
           CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT,
               name TEXT NOT NULL UNIQUE COLLATE NOCASE);
+          CREATE TABLE IF NOT EXISTS monthly_contribution_targets (
+              month TEXT NOT NULL, member_id INTEGER NOT NULL REFERENCES members(id),
+              amount INTEGER NOT NULL CHECK(amount >= 0),
+              PRIMARY KEY(month, member_id));
           CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT,
               name TEXT NOT NULL, category_id INTEGER NOT NULL REFERENCES categories(id),
               UNIQUE(name,category_id));
@@ -398,6 +402,119 @@ def create_app(test_config=None):
             "top_items": sorted(by_item.values(), key=lambda x: (-x["count"], -x["total"]))[:8],
             "members": sorted(members.items(), key=lambda x: x[0].casefold()),
         }
+
+    def settlement_data(raw):
+        """Per-roommate month-end obligations, derived from the same ledger."""
+        data = monthly_data(raw)
+        month = data["month"]
+        members = db().execute("SELECT id,name,active FROM members ORDER BY name COLLATE NOCASE").fetchall()
+        targets = {r["member_id"]: r["amount"] for r in db().execute(
+            "SELECT member_id,amount FROM monthly_contribution_targets WHERE month=?", (month,)
+        )}
+        accounts = {
+            m["id"]: {
+                "id": m["id"], "name": m["name"], "active": bool(m["active"]),
+                "target": targets.get(m["id"]),
+                "target_input": (f"{Decimal(targets[m['id']]) / 100:.2f}"
+                                 if m["id"] in targets else ""),
+                "contributed": 0, "fund_borrowed": 0, "caretaker_borrowed": 0,
+                "fund_repaid": 0, "caretaker_repaid": 0,
+                "fund_due": 0, "caretaker_due": 0,
+            }
+            for m in members
+        }
+        for tx in data["rows"]:
+            member = accounts.get(tx["member_id"])
+            if member is None:
+                continue
+            kind = tx["kind"]
+            if kind == "contribution":
+                member["contributed"] += tx["amount"]
+            elif kind == "advance_fund":
+                member["fund_borrowed"] += tx["amount"]
+            elif kind == "advance_caretaker":
+                member["caretaker_borrowed"] += tx["amount"]
+            elif kind == "repayment_fund":
+                member["fund_repaid"] += tx["amount"]
+            elif kind == "repayment_caretaker":
+                member["caretaker_repaid"] += tx["amount"]
+
+        # Outstanding advances can originate in any previous month. Compute
+        # their *remaining* balance as of the chosen month's end.
+        for entry in data["current"]["remaining"].values():
+            if entry["remaining"] <= 0:
+                continue
+            tx = entry["tx"]
+            member = accounts.get(tx["member_id"])
+            if not member:
+                continue
+            if tx["kind"] == "advance_fund":
+                member["fund_due"] += entry["remaining"]
+            elif tx["kind"] == "advance_caretaker":
+                member["caretaker_due"] += entry["remaining"]
+
+        for member in accounts.values():
+            target = member["target"]
+            member["contribution_gap"] = (max(target - member["contributed"], 0)
+                                          if target is not None else None)
+            member["extra_contribution"] = (max(member["contributed"] - target, 0)
+                                            if target is not None else None)
+            member["advance_due"] = member["fund_due"] + member["caretaker_due"]
+            member["to_follow_up"] = (member["advance_due"] +
+                                      (member["contribution_gap"] or 0))
+        ordered = list(accounts.values())
+        defined = [m for m in ordered if m["target"] is not None]
+        totals = {
+            "members": len(ordered),
+            "targets_set": len(defined),
+            "expected": sum(m["target"] for m in defined),
+            "contributed": sum(m["contributed"] for m in ordered),
+            "contribution_gap": sum(m["contribution_gap"] or 0 for m in ordered),
+            "fund_due": sum(m["fund_due"] for m in ordered),
+            "caretaker_due": sum(m["caretaker_due"] for m in ordered),
+            "follow_up": sum(m["to_follow_up"] for m in ordered),
+        }
+        return {"data": data, "members": ordered, "totals": totals}
+
+    @app.route("/settlements", methods=["GET", "POST"])
+    def settlements():
+        try:
+            month, _start, _end, _label = month_range(
+                request.form.get("month") if request.method == "POST" else request.args.get("month")
+            )
+        except ValueError:
+            abort(400, description="Choose a valid month.")
+        if request.method == "POST":
+            people = db().execute("SELECT id FROM members ORDER BY id").fetchall()
+            targets = []
+            try:
+                for person in people:
+                    member_id = person["id"]
+                    raw = request.form.get(f"target_{member_id}", "").strip()
+                    if not raw:
+                        targets.append((member_id, None))
+                        continue
+                    # Zero is an intentional target; blank means not configured.
+                    amount = 0 if raw in {"0", "0.0", "0.00"} else parse_amount(raw)
+                    targets.append((member_id, amount))
+                with db():
+                    for member_id, amount in targets:
+                        if amount is None:
+                            db().execute(
+                                "DELETE FROM monthly_contribution_targets WHERE month=? AND member_id=?",
+                                (month, member_id))
+                        else:
+                            db().execute("""
+                                INSERT INTO monthly_contribution_targets(month,member_id,amount)
+                                VALUES(?,?,?)
+                                ON CONFLICT(month,member_id) DO UPDATE SET amount=excluded.amount
+                            """, (month, member_id, amount))
+                flash("Monthly contribution targets saved.", "success")
+                return redirect(url_for("settlements", month=month))
+            except ValueError as e:
+                flash(str(e), "error")
+        result = settlement_data(month)
+        return render_template("settlements.html", title="Roommate settlements", **result)
 
     @app.get("/")
     def dashboard():
@@ -753,7 +870,8 @@ def create_app(test_config=None):
     @app.get("/reports")
     def reports():
         try:
-            data = monthly_data(request.args.get("month"))
+            settlement = settlement_data(request.args.get("month"))
+            data = settlement["data"]
         except ValueError:
             abort(400)
         months = []
@@ -762,7 +880,8 @@ def create_app(test_config=None):
             y += (m - 1) // 12
             m = (m - 1) % 12 + 1
             months.append((f"{y:04d}-{m:02d}", monthly_data(f"{y:04d}-{m:02d}")["household"]))
-        return render_template("reports.html", title="Monthly report", data=data, months=months)
+        return render_template("reports.html", title="Monthly report", data=data, months=months,
+                               settlement=settlement)
 
     @app.route("/settings", methods=["GET", "POST"])
     def settings():
@@ -859,7 +978,8 @@ def create_app(test_config=None):
         return render_template("error.html", title="Not found", message="This page or entry does not exist."), 404
 
     # Used in the automated test suite without exposing internals as public URLs.
-    app.extensions["ledger_tools"] = {"balances_at": balances_at, "monthly_data": monthly_data}
+    app.extensions["ledger_tools"] = {"balances_at": balances_at, "monthly_data": monthly_data,
+                                      "settlement_data": settlement_data}
     return app
 
 
