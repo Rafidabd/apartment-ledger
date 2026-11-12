@@ -564,5 +564,17 @@ class LedgerTests(unittest.TestCase):
 
 
 
+    def test_creator_credit_links_to_rafid_and_source(self):
+        for route in ('/', '/basket', '/settlements'):
+            with self.subTest(route=route):
+                page = self.client.get(route)
+                self.assertEqual(page.status_code, 200)
+                self.assertIn(b'Built by', page.data)
+                self.assertIn(b'https://github.com/Rafidabd"', page.data)
+                self.assertIn(b'https://github.com/Rafidabd/apartment-ledger', page.data)
+                self.assertIn(b'Source code on GitHub', page.data)
+
+
+
 if __name__ == '__main__':
     unittest.main()
