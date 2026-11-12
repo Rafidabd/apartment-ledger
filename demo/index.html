@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f4">
+  <meta name="description" content="Explore Apartment Ledger using a fictional Bangladesh apartment's expenses, roommate settlements, and caretaker balances. This is a safe, read-only demo.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Apartment Ledger · Interactive Demo</title>
+  <link rel="stylesheet" href="./demo.css">
+  <script src="./demo.js" defer></script>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#overview" data-route="overview"><span class="brand-icon">⌂</span><span><strong>Apartment Ledger</strong><small>Shared money, made simple.</small></span></a>
+      <div class="demo-flag"><span class="demo-dot"></span> PUBLIC DEMO <small>Entirely fictional data</small></div>
+      <p class="nav-label">WORKSPACE</p>
+      <nav id="side-nav" class="nav-list" aria-label="Sections">
+        <a href="#overview" data-route="overview"><span class="nav-icon">▦</span> Overview</a>
+        <a href="#calendar" data-route="calendar"><span class="nav-icon">▣</span> Calendar</a>
+        <a href="#transactions" data-route="transactions"><span class="nav-icon">☷</span> Transactions</a>
+        <a href="#roommates" data-route="roommates"><span class="nav-icon">◫</span> Roommates</a>
+        <a href="#caretaker" data-route="caretaker"><span class="nav-icon">⇄</span> Caretaker</a>
+        <a href="#reports" data-route="reports"><span class="nav-icon">▥</span> Reports</a>
+      </nav>
+      <div class="side-bottom">
+        <div class="privacy-label">◉ Read-only preview</div>
+        <a class="side-source" target="_blank" rel="noopener noreferrer" href="https://github.com/Rafidabd/apartment-ledger">View source code <span aria-hidden="true">↗</span></a>
+      </div>
+    </aside>
+    <div class="main-col">
+      <header class="topbar">
+        <div class="breadcrumbs">HOME FINANCE <span>/</span> <strong id="current-page-label">OVERVIEW</strong></div>
+        <div class="topbar-right"><span class="demo-lozenge">DEMO DATA</span><span class="top-date">November 2026</span></div>
+      </header>
+      <main id="main-content" class="main-content" tabindex="-1" aria-live="polite">
+        <div class="loading-placeholder">Loading fictional apartment records…</div>
+      </main>
+      <footer class="footer">Built by <a target="_blank" rel="noopener noreferrer" href="https://github.com/Rafidabd">Rafid</a><span aria-hidden="true">·</span><a href="https://github.com/Rafidabd/apartment-ledger" target="_blank" rel="noopener noreferrer">Source code on GitHub ↗</a><span aria-hidden="true">·</span><span>Fictional demonstration only</span></footer>
+    </div>
+  </div>
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <a href="#overview" data-route="overview"><span>▦</span>Home</a>
+    <a href="#calendar" data-route="calendar"><span>▣</span>Calendar</a>
+    <a href="#transactions" data-route="transactions"><span>☷</span>History</a>
+    <a href="#roommates" data-route="roommates"><span>◫</span>Roommates</a>
+    <a href="#caretaker" data-route="caretaker"><span>⇄</span>Caretaker</a>
+    <a href="#reports" data-route="reports"><span>▥</span>Reports</a>
+  </nav>
+</body>
+</html>
