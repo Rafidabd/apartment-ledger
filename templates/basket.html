@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head basket-heading">
+  <div><p class="eyebrow">QUICK SHOPPING ENTRY</p><h1>Shopping basket</h1>
+    <p class="subtitle">Rice, eggs, vegetables — add everything from one shopping trip and save it together.</p></div>
+  <a class="btn btn-outline" href="{{ url_for('calendar_view',month=entry_date[:7]) }}">← Calendar</a>
+</div>
+<form method="post" action="{{ url_for('basket') }}" id="basket-form" class="basket-layout">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <section class="card basket-summary-panel">
+    <h3>When and who paid?</h3>
+    <div class="basket-head-fields">
+      <div class="field"><label for="basket-date">Date</label>
+        <input id="basket-date" name="tx_date" type="date" value="{{ entry_date }}" required></div>
+      <div class="field"><label for="basket-time">Time <span class="hint">optional</span></label>
+        <input id="basket-time" name="tx_time" type="time" value="{{ entry_time }}"></div>
+    </div>
+    <div class="field">
+      <label for="basket-payer">Who paid for these items?</label>
+      <select id="basket-payer" name="payer" required>
+        <option value="shared" {% if payer == 'shared' %}selected{% endif %}>Shared apartment fund</option>
+        <option value="caretaker" {% if payer == 'caretaker' %}selected{% endif %}>Caretaker's own money</option>
+      </select>
+      <small class="field-tip">Caretaker-paid purchases count as household expenses and create a reimbursement due, without reducing shared cash immediately.</small>
+    </div>
+    <div class="field"><label for="basket-note">Shopping note <span class="hint">optional, applies to all items</span></label>
+      <input id="basket-note" name="note" value="{{ request.form.get('note','') }}" maxlength="300"
+             placeholder="e.g. Friday bazaar / শুক্রবারের বাজার"></div>
+  </section>
+  <section class="card basket-items-panel">
+    <div class="basket-section-head">
+      <div><p class="eyebrow">ITEMS</p><h2>What did you buy?</h2><p>Add up to 30 items at once. English or বাংলা works.</p></div>
+      <button type="button" id="basket-add" class="btn btn-outline">＋ Add item</button>
+    </div>
+    <div id="basket-rows">
+      {% for row in rows %}
+      <div class="basket-row" data-basket-row>
+        <div class="basket-row-head"><strong class="basket-row-number">Item {{ loop.index }}</strong>
+          <button type="button" class="basket-remove" data-basket-remove aria-label="Remove this item">Remove</button></div>
+        <div class="basket-row-grid">
+          <div class="field"><label>Category</label><select name="category_id[]" class="basket-category" required>
+            <option value="">Select category</option>
+            {% for cat in categories %}<option value="{{ cat.id }}" {% if row.category_id == cat.id|string or (not row.category_id and cat.name=='Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+          </select></div>
+          <div class="field"><label>Saved item <span class="hint">optional</span></label><select class="basket-pick" aria-label="Pick a saved item"><option value="">Choose one...</option></select></div>
+          <div class="field basket-name"><label>Item / পণ্যের নাম</label>
+            <input name="item[]" class="basket-item-name" required maxlength="120" value="{{ row.item }}" placeholder="e.g. চাল, ডাল, Eggs"></div>
+          <div class="field"><label>Price (৳)</label>
+            <input name="amount[]" class="basket-amount" type="number" step="0.01" min="0.01" required inputmode="decimal" value="{{ row.amount }}" placeholder="0.00"></div>
+          <div class="field"><label>Quantity <span class="hint">optional</span></label>
+            <input name="quantity[]" maxlength="40" value="{{ row.quantity }}" placeholder="2 kg / ২ কেজি"></div>
+          <div class="field"><label>Save to item list?</label>
+            <select name="remember[]">
+              <option value="1" {% if row.remember!='0' %}selected{% endif %}>Yes — use again</option>
+              <option value="0" {% if row.remember=='0' %}selected{% endif %}>No — just this time</option>
+            </select></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="basket-footer">
+      <div><span id="basket-count">{{ rows|length }} items</span><strong id="basket-total">৳0</strong><small>Combined shopping total</small></div>
+      <button type="submit" class="btn btn-primary btn-lg" id="basket-submit">Save all purchases →</button>
+    </div>
+  </section>
+</form>
+<template id="basket-template">
+  <div class="basket-row" data-basket-row>
+    <div class="basket-row-head"><strong class="basket-row-number">New item</strong><button type="button" class="basket-remove" data-basket-remove>Remove</button></div>
+    <div class="basket-row-grid">
+      <div class="field"><label>Category</label><select name="category_id[]" class="basket-category" required>
+        <option value="">Select category</option>
+        {% for cat in categories %}<option value="{{ cat.id }}" {% if cat.name=='Groceries' %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+      </select></div>
+      <div class="field"><label>Saved item <span class="hint">optional</span></label><select class="basket-pick" aria-label="Pick a saved item"><option value="">Choose one...</option></select></div>
+      <div class="field basket-name"><label>Item / পণ্যের নাম</label><input name="item[]" class="basket-item-name" required maxlength="120" placeholder="e.g. চাল, ডাল, Eggs"></div>
+      <div class="field"><label>Price (৳)</label><input name="amount[]" class="basket-amount" type="number" step="0.01" min="0.01" required inputmode="decimal" placeholder="0.00"></div>
+      <div class="field"><label>Quantity <span class="hint">optional</span></label><input name="quantity[]" maxlength="40" placeholder="2 kg / ২ কেজি"></div>
+      <div class="field"><label>Save to item list?</label><select name="remember[]"><option value="1">Yes — use again</option><option value="0">No — just this time</option></select></div>
+    </div>
+  </div>
+</template>
+<script type="application/json" id="basket-catalog">{{ saved_items|tojson }}</script>
+<script src="{{ url_for('static',filename='basket.js') }}" defer></script>
+{% endblock %}
