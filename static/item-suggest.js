@@ -112,6 +112,10 @@
         option.addEventListener('click', () => choose(i));
         menu.appendChild(option);
       });
+      // Anchor the floating results immediately under the typed field, not below its help text.
+      menu.style.left = input.offsetLeft + 'px';
+      menu.style.top = (input.offsetTop + input.offsetHeight + 4) + 'px';
+      menu.style.width = input.offsetWidth + 'px';
       menu.hidden = false;
       input.setAttribute('aria-expanded', 'true');
     }
