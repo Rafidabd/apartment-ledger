@@ -870,8 +870,8 @@ def create_app(test_config=None):
     @app.get("/reports")
     def reports():
         try:
-            data = settlement_data(request.args.get("month"))["data"]
-            settlement = settlement_data(data["month"])
+            settlement = settlement_data(request.args.get("month"))
+            data = settlement["data"]
         except ValueError:
             abort(400)
         months = []
