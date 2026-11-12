@@ -260,3 +260,27 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   .card {box-shadow:none!important;}
   .caretaker-action-panel {display:none;}
 }
+
+
+/* Quiet project signature — clear attribution without cluttering app content. */
+.app-credit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 42px;
+  padding: 19px 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.app-credit a { color: #357663; font-weight: 700; }
+.app-credit a:hover { color: var(--green-dark); text-decoration: underline; }
+.app-credit-divider { color: #b1bdb5; }
+@media (max-width: 430px) {
+  .app-credit { margin-top: 30px; gap: 7px; font-size: 10px; }
+}
+@media print { .app-credit { display: none!important; } }
