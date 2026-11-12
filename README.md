@@ -14,6 +14,7 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 - Write custom item names in English, বাংলা, or a mixture. After entering a new item, choose whether to add it to the reusable list.
 - Optionally recall the last recorded price for a saved item. Prices are never filled in without a tap.
 - Track money received from each roommate's family, plus other deposits to the shared fund.
+- Open **Roommates** for a month-by-month settlement statement: each person's contributions, optional expected contribution, outstanding advances to the fund or caretaker, and repayments.
 - Use the dedicated **Caretaker** section to view all money exchanged with him, record advances, repayments, reimbursements, or caretaker-funded purchases.
 - Keep **shared-fund advances** separate from **personal loans from the caretaker**.
 - Record partial repayments and carry unpaid balances into the next month.
@@ -63,6 +64,22 @@ If you start recording in the middle of a month, treat that opening amount as **
 
 The shared fund's closing balance is **cash remaining**, not profit. Personal advances aren't household expenses, and repaying a loan isn't new household income. A worked example is in [docs/ledger-rules.md](docs/ledger-rules.md).
 
+## Monthly roommate settlements
+
+Use the **Roommates** section to check each person's financial position for a selected month. You can set an **optional expected contribution** for each roommate in that month; leave it empty to mark the target as not configured, or enter **0** when you explicitly expect no contribution. Targets only apply to the selected month, and they are stored separately from real money transactions.
+
+For each person the app shows:
+
+- Actual monthly contributions received (posted via **Add money → Roommate contribution**).
+- Any difference between an explicitly configured target and the amount received that month.
+- Unpaid advances from the shared fund, including balances carried forward from previous months.
+- Unpaid personal loans from the caretaker, also carried forward until repaid.
+- Monthly borrowing and repayment movements, shown in an expandable detail section.
+
+**Known amount to follow up** = unpaid contribution target, if one was set, plus the two types of unpaid advances. It is a planning figure, *not* extra cash and *not* household spending. If a target wasn't configured, the contribution gap is **unknown** rather than assumed to be zero. Prior-month unfulfilled contribution targets do not automatically roll into a later month's target; if you want to track overdue contributions from earlier months, review those monthly reports.
+
+The **Reports** page also shows a settlement summary and links to roommate accounts. Actual contributions are already included in shared income; target amounts do not affect the cash balance. Loan repayments remain distinct from monthly contributions.
+
 ## Caretaker account (connected to the main ledger)
 
 The **Caretaker** navigation item is a separate view of the *same recorded transactions*, not a second set of finances:
@@ -93,7 +110,7 @@ After installing the dependencies:
 python -m unittest discover -s tests -v
 ```
 
-These tests cover the fund/caretaker split, partial repayments, caretaker-page reconciliation, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, repeat-entry navigation, atomic shopping baskets, and auditable expense corrections. The GitHub workflow also runs JavaScript syntax checks. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
+These tests cover the fund/caretaker split, partial repayments, caretaker-page reconciliation, per-roommate monthly targets and unpaid advance balances, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, repeat-entry navigation, atomic shopping baskets, and auditable expense corrections. The GitHub workflow also runs JavaScript syntax checks. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
 
 ## Current limits
 
