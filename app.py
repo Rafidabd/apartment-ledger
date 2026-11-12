@@ -978,7 +978,8 @@ def create_app(test_config=None):
         return render_template("error.html", title="Not found", message="This page or entry does not exist."), 404
 
     # Used in the automated test suite without exposing internals as public URLs.
-    app.extensions["ledger_tools"] = {"balances_at": balances_at, "monthly_data": monthly_data}
+    app.extensions["ledger_tools"] = {"balances_at": balances_at, "monthly_data": monthly_data,
+                                      "settlement_data": settlement_data}
     return app
 
 
