@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><p class="eyebrow">FIX A MISTAKE</p><h1>Correct purchase</h1>
+    <p class="subtitle">Change an item, price, or date without removing the original transaction.</p></div>
+  <a class="btn btn-outline" href="{{ url_for('day_view',day=tx.tx_date) if from_day else url_for('transactions',month=tx.tx_date[:7]) }}">← Back to entries</a>
+</div>
+<div class="entry-shell">
+  <div class="card entry-card correction-card">
+    <div class="correction-notice">
+      <strong>{{ 'Caretaker-paid purchase' if tx.kind == 'caretaker_expense' else 'Shared fund purchase' }}</strong>
+      <p>This purchase's payment source stays the same. Corrections are logged, and monthly balances update automatically.</p>
+    </div>
+    <form method="post" action="{{ url_for('edit_expense',tx_id=tx.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if from_day %}<input type="hidden" name="return_day" value="1">{% endif %}
+      <div class="form-grid">
+        <div class="field"><label for="correction-date">Purchase date</label>
+          <input id="correction-date" name="tx_date" type="date" value="{{ request.form.get('tx_date',tx.tx_date) }}" required></div>
+        <div class="field"><label for="correction-time">Time <span class="hint">optional</span></label>
+          <input id="correction-time" name="tx_time" type="time" value="{{ request.form.get('tx_time',tx.tx_time) }}"></div>
+        <div class="field"><label for="correction-category">Category</label>
+          <select id="correction-category" name="category_id" required>
+            {% for cat in categories %}<option value="{{ cat.id }}" {% if request.form.get('category_id',tx.category_id|string)==cat.id|string %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field"><label for="correction-item">Item / পণ্য</label>
+          <input id="correction-item" name="item" maxlength="120" required value="{{ request.form.get('item',tx.item) }}"></div>
+        <div class="field"><label for="correction-amount">Correct price (৳)</label>
+          <div class="money-field"><span>৳</span><input id="correction-amount" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal"
+            value="{{ request.form.get('amount',amount_text) }}" required></div></div>
+        <div class="field"><label for="correction-quantity">Quantity <span class="hint">optional</span></label>
+          <input id="correction-quantity" name="quantity" maxlength="40" value="{{ request.form.get('quantity',tx.quantity) }}"></div>
+        <div class="field wide"><label for="correction-note">Note <span class="hint">optional</span></label>
+          <textarea id="correction-note" name="note" maxlength="300" rows="2">{{ request.form.get('note',tx.note) }}</textarea></div>
+        <div class="field wide"><label class="correction-remember">
+            <input type="checkbox" name="remember_item" value="1" {% if request.form.get('remember_item')=='1' %}checked{% endif %}>
+            Save item name as a shortcut for future purchases
+          </label></div>
+      </div>
+      {% if tx.kind=='caretaker_expense' %}<p class="info-note">Existing caretaker reimbursements stay linked to this expense. The corrected amount cannot be less than what has already been repaid.</p>{% endif %}
+      <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit">Save correction →</button>
+        <a class="btn btn-outline" href="{{ url_for('day_view',day=tx.tx_date) if from_day else url_for('transactions',month=tx.tx_date[:7]) }}">Cancel</a></div>
+    </form>
+  </div>
+  {% if edits %}
+  <section class="card panel correction-log">
+    <div class="panel-title"><div><h3>Correction history</h3><p>The previous values remain recorded for reference.</p></div></div>
+    {% for edit in edits %}
+    <div class="correction-history-entry"><strong>{{ edit.at }} UTC</strong>
+      <p>{{ edit.before.item }} · {{ money(edit.before.amount) }} → {{ edit.after.item }} · {{ money(edit.after.amount) }}</p>
+      <small>{{ edit.before.tx_date }} → {{ edit.after.tx_date }}{% if edit.before.quantity != edit.after.quantity %} · quantity updated{% endif %}{% if edit.before.note != edit.after.note %} · note updated{% endif %}</small>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

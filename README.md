@@ -8,6 +8,8 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 
 - Record groceries, bills, rent, and other expenses with a category, item, price, optional quantity, and optional purchase time.
 - Browse a monthly calendar; tap any date to view its entries and add more throughout the day.
+- Enter an entire market trip in the **Shopping basket**: select the date, who's paying, and each item, category, amount and optional quantity. Save all purchases together.
+- Correct an existing purchase's price, category, item name or date from the daily ledger or transaction history; changes are logged locally.
 - Pick frequently used items from a searchable set of shortcuts; common grocery names are included in English and Bengali (বাংলা).
 - Write custom item names in English, বাংলা, or a mixture. After entering a new item, choose whether to add it to the reusable list.
 - Optionally recall the last recorded price for a saved item. Prices are never filled in without a tap.
@@ -19,6 +21,10 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 - Export transactions to CSV or download a complete SQLite backup.
 
 The main screen is built around four actions: **Add expense**, **Add money**, **Record advance**, and **Record repayment**. The **Calendar** view shows daily household spending and transaction counts. Tap a day, then add separate expenses at different times. The optional time field defaults to the current time for today's entries; older dates can be left without a time.
+
+For a market trip with several purchases, open **Shopping basket** from the Dashboard or a specific calendar day. Add as many as 30 items, using saved-item dropdowns where convenient, and keep the payer consistent across the whole trip (shared fund *or* caretaker). A single save validates every line first and then records all entries together; an invalid line is never partially posted. The form shows the running sum while you enter amounts.
+
+For a typo or a wrong price, select **Edit** on an expense in the Transactions list or daily view. The app keeps a correction history showing old and new values. It does not allow you to quietly change the original funding source, nor reduce a caretaker-paid expense below the amount already reimbursed.
 
 The quick-entry screen offers searchable, tappable saved items grouped by category. Start typing an item like "চাল", "ডাল", or "Eggs", or tap a saved item from the list. A new name triggers an inline **Add this to my item list?** checkbox (checked by default); uncheck it for a one-off purchase. The expense is still recorded either way. Saved item names are deduplicated within a category using Unicode normalization, so repeated Bengali names do not create separate shortcuts. You can also manage the catalog in Settings.
 
@@ -73,8 +79,8 @@ After installing the dependencies:
 python -m unittest discover -s tests -v
 ```
 
-These tests cover the fund/caretaker split, partial repayments, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, and repeat-entry navigation. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
+These tests cover the fund/caretaker split, partial repayments, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, repeat-entry navigation, atomic shopping baskets, and auditable expense corrections. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
 
 ## Current limits
 
-The app doesn't yet include multiuser login, receipt photos, bank imports, contribution targets, or automatic cloud sync. Expense counts mean **number of recorded purchases**, not how much of an item was physically consumed. All amounts are in BDT.
+The app doesn't yet include multiuser login, receipt photos, bank imports, contribution targets, or automatic cloud sync. Corrections currently support household purchases only; advances and repayments still use the existing delete/re-enter workflow to protect linked balances. Expense counts mean **number of recorded purchases**, not how much of an item was physically consumed. All amounts are in BDT.

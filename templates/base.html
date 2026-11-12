@@ -20,7 +20,8 @@
       <nav class="sidebar-nav" aria-label="Main navigation">
         <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><span>▦</span> Dashboard</a>
         <a class="nav-link {% if request.endpoint in ['calendar_view','day_view'] %}active{% endif %}" href="{{ url_for('calendar_view') }}"><span>▦</span> Calendar</a>
-        <a class="nav-link {% if request.endpoint == 'record' %}active{% endif %}" href="{{ url_for('record', kind='expense') }}"><span>＋</span> Add transaction</a>
+        <a class="nav-link {% if request.endpoint == 'record' or request.endpoint == 'edit_expense' %}active{% endif %}" href="{{ url_for('record', kind='expense') }}"><span>＋</span> Add transaction</a>
+        <a class="nav-link {% if request.endpoint == 'basket' %}active{% endif %}" href="{{ url_for('basket') }}"><span>▤</span> Shopping basket</a>
         <a class="nav-link {% if request.endpoint == 'transactions' %}active{% endif %}" href="{{ url_for('transactions') }}"><span>☷</span> Transactions</a>
         <a class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}" href="{{ url_for('reports') }}"><span>▥</span> Reports</a>
         <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}"><span>⚙</span> Settings</a>

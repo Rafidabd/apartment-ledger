@@ -5,10 +5,10 @@
   {% if rows %}
     <div class="table-scroll"><table><thead><tr><th>Date</th><th>What happened</th><th>Category / person</th><th>Amount</th><th class="right">Action</th></tr></thead><tbody>
     {% for tx in rows %}
-      <tr><td class="nowrap">{{ tx.tx_date }}</td><td><strong>{{ tx.item or kinds[tx.kind] }}</strong><small class="table-sub">{{ kinds[tx.kind] }}{% if tx.note %} · {{ tx.note }}{% endif %}{% if tx.quantity %} · {{ tx.quantity }}{% endif %}</small></td><td>{{ tx.member_name or tx.category_name or '—' }}</td><td class="amount-cell">{{ money(tx.amount) }}</td><td class="right"><form method="post" action="{{ url_for('delete_transaction',tx_id=tx.id) }}" onsubmit="return confirm('Delete this entry? This recalculates all balances.');"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="text-danger" type="submit" aria-label="Delete transaction {{ tx.id }}">Delete</button></form></td></tr>
+      <tr><td class="nowrap">{{ tx.tx_date }}</td><td><strong>{{ tx.item or kinds[tx.kind] }}</strong><small class="table-sub">{{ kinds[tx.kind] }}{% if tx.note %} · {{ tx.note }}{% endif %}{% if tx.quantity %} · {{ tx.quantity }}{% endif %}</small></td><td>{{ tx.member_name or tx.category_name or '—' }}</td><td class="amount-cell">{{ money(tx.amount) }}</td><td class="right">{% if tx.kind in ['expense','caretaker_expense'] %}<a class="edit-link" href="{{ url_for('edit_expense',tx_id=tx.id) }}">Edit</a>{% endif %}<form method="post" action="{{ url_for('delete_transaction',tx_id=tx.id) }}" onsubmit="return confirm('Delete this entry? This recalculates all balances.');"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="text-danger" type="submit" aria-label="Delete transaction {{ tx.id }}">Delete</button></form></td></tr>
     {% endfor %}
     </tbody></table></div>
   {% else %}<div class="empty"><strong>No entries in {{ label }}.</strong><p>Pick another month or add a new expense.</p><a class="btn btn-primary" href="{{ url_for('record',kind='expense') }}">＋ Add expense</a></div>{% endif %}
   </div>
-  <p class="footnote">Deleting an original advance or caretaker-paid purchase requires deleting its repayments first. Download a backup before making bulk corrections.</p>
+  <p class="footnote">Correct purchases using Edit, which keeps a change history. Deleting an original advance or caretaker-paid purchase requires deleting its repayments first. Download a backup before making bulk corrections.</p>
 {% endblock %}
