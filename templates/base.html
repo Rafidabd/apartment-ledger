@@ -23,6 +23,7 @@
         <a class="nav-link {% if request.endpoint == 'record' or request.endpoint == 'edit_expense' %}active{% endif %}" href="{{ url_for('record', kind='expense') }}"><span>＋</span> Add transaction</a>
         <a class="nav-link {% if request.endpoint == 'basket' %}active{% endif %}" href="{{ url_for('basket') }}"><span>▤</span> Shopping basket</a>
         <a class="nav-link {% if request.endpoint == 'transactions' %}active{% endif %}" href="{{ url_for('transactions') }}"><span>☷</span> Transactions</a>
+        <a class="nav-link {% if request.endpoint == 'caretaker_view' %}active{% endif %}" href="{{ url_for('caretaker_view') }}"><span>⇄</span> Caretaker</a>
         <a class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}" href="{{ url_for('reports') }}"><span>▥</span> Reports</a>
         <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}"><span>⚙</span> Settings</a>
       </nav>
@@ -49,7 +50,7 @@
   <nav class="mobile-nav" aria-label="Mobile navigation">
     <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}><span>▦</span>Home</a>
     <a href="{{ url_for('calendar_view') }}" {% if request.endpoint in ['calendar_view','day_view'] %}class="active"{% endif %}><span>▦</span>Calendar</a>
-    <a href="{{ url_for('transactions') }}" {% if request.endpoint == 'transactions' %}class="active"{% endif %}><span>☷</span>History</a>
+    <a href="{{ url_for('caretaker_view') }}" {% if request.endpoint == 'caretaker_view' %}class="active"{% endif %}><span>⇄</span>Caretaker</a>
     <a class="mobile-add" href="{{ url_for('record',kind='expense') }}"><span>＋</span>Add</a>
     <a href="{{ url_for('reports') }}" {% if request.endpoint == 'reports' %}class="active"{% endif %}><span>▥</span>Reports</a>
     <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}><span>⚙</span>Settings</a>
