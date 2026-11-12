@@ -1,0 +1,262 @@
+/* Apartment Ledger — final layout refinement.
+   Keeps the existing design language, transaction forms, and accounting UI intact. */
+:root {
+  --bg: #f4f7f4;
+  --white: #fff;
+  --ink: #1d2c28;
+  --muted: #6d8078;
+  --border: #dfe9e2;
+  --green: #116354;
+  --green-dark: #0a493e;
+  --mint: #e9f4ed;
+  --radius: 17px;
+  --shadow: 0 5px 22px rgba(28, 58, 45, .045);
+}
+html { scroll-behavior: smooth; }
+body { background: var(--bg); }
+button, a, input, select, summary { touch-action: manipulation; }
+a:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 3px solid #5dafa0; outline-offset: 3px;
+}
+.card { transition: box-shadow .15s ease, border-color .15s ease; }
+.content { max-width: 1480px; padding-top: 38px; }
+.page-head { margin-bottom: 27px; }
+.page-head h1 { font-size: clamp(27px, 2.6vw, 36px); letter-spacing: -1.1px; }
+.page-head .subtitle { max-width: 640px; line-height: 1.6; }
+.eyebrow { color: #427f68; }
+.topbar { background: rgba(255,255,255,.84); backdrop-filter: blur(10px); }
+.sidebar { padding: 24px 14px; overflow-y: auto; scrollbar-width: thin; }
+.sidebar-nav { gap: 3px; }
+.nav-link { font-size: 12px; padding: 11px 12px; }
+.nav-link.active { box-shadow: inset 3px 0 #1d7f62; }
+.brand { padding: 9px 8px 25px; }
+.sidebar-foot { padding-top: 14px; }
+.btn, .nav-link, .action, .dashboard-route-card { transition: background .17s, border-color .17s, transform .17s, box-shadow .17s; }
+.btn:active, .dashboard-route-card:active, .action:active { transform: scale(.99); }
+.panel-title { align-items:center; }
+.panel-title h3 { font-size: 15px; }
+.panel-title p { line-height: 1.5; }
+
+/* Dashboard: one focused entry workspace and a bento row for related accounts. */
+.dashboard-section { margin: 0 0 25px; }
+.dashboard-section-title { display:flex;align-items:end;justify-content:space-between;gap:16px;margin:0 2px 14px; }
+.dashboard-section-title .eyebrow { margin-bottom: 5px; }
+.dashboard-section-title h2 { font-size: 17px;letter-spacing:-.4px;margin:0;font-weight:780; }
+.dashboard-section-title>a {font-size:12px;font-weight:720;white-space:nowrap;}
+.dashboard-section-caption {font-size:11px;color:var(--muted);}
+.dashboard-entry-layout {
+  display:grid;
+  grid-template-columns:minmax(0,1.6fr) minmax(250px,.8fr);
+  gap:14px;align-items:stretch;
+}
+.dashboard-entry-layout .action-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;margin:0;
+}
+.dashboard-entry-layout .action {
+  min-height:91px;padding:16px 17px;border-radius:15px;
+  box-shadow:0 2px 7px rgba(31,66,49,.02);
+}
+.dashboard-entry-layout .action:hover {
+  transform:translateY(-2px);border-color:#8ec9ae;box-shadow:0 8px 17px rgba(34,89,67,.065);
+}
+.dashboard-entry-layout .action strong {font-size:13px;white-space:normal;line-height:1.35;}
+.dashboard-entry-layout .action small {font-size:11px;color:#81958a;line-height:1.45;}
+.dashboard-entry-layout .action-icon {width:40px;height:40px;border-radius:12px;}
+.dashboard-entry-layout .primary-action {background:#eaf6ee;}
+.dashboard-basket-feature {
+  color:#e5f4e7;display:flex;flex-direction:column;justify-content:space-between;
+  padding:24px;border-radius:16px;min-height:196px;
+  background:radial-gradient(circle at 100% 8%,rgba(142,207,170,.22),transparent 48%),
+             linear-gradient(140deg,#155949,#0b3e37);
+  border:1px solid #185447;overflow:hidden;
+}
+.dashboard-basket-feature:hover {transform:translateY(-2px);box-shadow:0 9px 26px rgba(14,68,50,.14);color:#fff;}
+.basket-feature-top {display:flex;align-items:center;gap:11px;flex-wrap:wrap;}
+.basket-feature-icon {display:grid;place-items:center;background:#ffffff28;border-radius:11px;width:35px;height:35px;font-size:22px;}
+.basket-feature-tag {font-size:9px;letter-spacing:1.5px;font-weight:800;color:#c0e4cd;}
+.dashboard-basket-feature>strong {font-size:20px;letter-spacing:-.5px;line-height:1.2;display:block;margin-top:18px;}
+.dashboard-basket-feature>small {font-size:11px;line-height:1.6;color:#d3ebdd;display:block;margin-top:8px;}
+.basket-feature-cta {font-size:12px;font-weight:750;margin-top:18px;color:#fff;display:flex;justify-content:space-between;}
+.dashboard-route-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;}
+.dashboard-route-card {
+  display:flex;align-items:center;gap:13px;min-width:0;
+  padding:19px 20px;background:white;border:1px solid var(--border);
+  border-radius:15px;color:var(--ink);
+}
+.dashboard-route-card:hover {border-color:#91c7a8;background:#fbfdfa;transform:translateY(-2px);}
+.dashboard-route-icon {background:#edf6ee;border-radius:12px;display:grid;place-items:center;flex:none;
+  width:43px;height:43px;color:#24785e;font-size:22px;}
+.dashboard-route-card>span:nth-child(2) {display:flex;flex-direction:column;min-width:0;gap:5px;flex:1;}
+.dashboard-route-card strong {font-size:13px;}
+.dashboard-route-card small {font-size:11px;line-height:1.5;color:#788d81;}
+.dashboard-route-arrow {color:#4c8b6a;font-size:18px;}
+.dashboard-outstanding .small-stat-grid {margin:0;}
+.dashboard-insights {margin-top:22px;align-items:start;}
+.dashboard-insights>.card {min-height:280px;}
+.dashboard-footer-links {display:flex;justify-content:flex-start;flex-wrap:wrap;column-gap:22px;row-gap:7px;}
+.dashboard-footer-links a {line-height:1.5;}
+
+/* Month report: two related account sections read as parallel columns, not long blocks. */
+.report-account-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:18px 0;
+  align-items:start;
+}
+.report-account-grid>.card {margin:0;min-width:0;height:100%;}
+.report-account-grid .panel-title {align-items:start;flex-wrap:wrap;row-gap:9px;margin-bottom:15px;}
+.report-account-grid .panel-title a {margin-left:auto;}
+.report-account-grid .settlement-report-totals,.report-account-grid .caretaker-report-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+.report-account-grid .settlement-report-totals>div,.report-account-grid .caretaker-report-grid>div {
+  padding:13px;background:#f8fbf8;border-radius:11px;
+}
+.report-account-grid .settlement-report-totals strong,.report-account-grid .caretaker-report-grid strong {font-size:18px;overflow-wrap:anywhere;}
+.report-account-grid .care-footnote {font-size:10px;}
+.report-analytics-grid {align-items:stretch;}
+.report-hero {background:linear-gradient(110deg,#fff 55%,#eff8f1);}
+
+/* Set monthly targets in a compact sidebar; keep per-person settlement cards visible. */
+.settlement-workspace {
+  display:grid;grid-template-columns:minmax(275px,.7fr) minmax(0,1.9fr);
+  gap:17px;align-items:start;margin:18px 0;
+}
+.settlement-workspace>.card {margin:0;min-width:0;}
+.settlement-settings {position:sticky;top:20px;}
+.settlement-settings .settlement-target-grid {display:grid;grid-template-columns:1fr;gap:10px;max-height:420px;overflow:auto;}
+.settlement-target {padding:11px 12px;gap:6px;}
+.settlement-form-footer {flex-direction:column;align-items:stretch;gap:12px;}
+.settlement-form-footer .btn {width:100%;}
+.settlement-member-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.settlement-member-card {padding:15px;}
+.settlement-member-metrics {gap:10px 8px;}
+.settlement-member-metrics strong {font-size:14px;}
+.settlement-month-movements {margin-top:10px;}
+.settlement-intro {margin-bottom:14px;}
+.settlement-summary {margin-bottom:16px;}
+
+/* Basket: contextual payment settings on the left, purchase rows on the right. */
+.basket-layout {
+  max-width:none;display:grid;
+  grid-template-columns:minmax(260px,.7fr) minmax(0,1.7fr);
+  gap:16px;align-items:start;
+}
+.basket-layout>.card {margin:0;min-width:0;}
+.basket-summary-panel {position:sticky;top:18px;}
+.basket-head-fields {grid-template-columns:1fr;gap:10px;}
+.basket-row {padding:14px 16px;background:#fbfdfa;}
+.basket-row-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+.basket-row-grid .basket-name {grid-column:span 2;}
+.basket-footer {background:#fff;}
+
+/* Optional saved-item chip catalog only opens on demand. Autocomplete remains primary. */
+.saved-catalog {padding:0!important;border:1px solid #dcebe1;border-radius:12px;background:#fbfdfb;}
+.saved-catalog summary {display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:13px 15px;list-style:none;cursor:pointer;border-radius:12px;}
+.saved-catalog summary::-webkit-details-marker {display:none;}
+.saved-catalog summary strong {display:block;font-size:12px;color:#366250;}
+.saved-catalog summary small {display:block;font-size:10px;color:#7b9385;margin-top:4px;}
+.catalog-expand-icon {font-size:20px;color:#5d947c;transition:transform .15s;}
+.saved-catalog[open] .catalog-expand-icon {transform:rotate(180deg);}
+.saved-catalog[open] {padding-bottom:13px!important;}
+.saved-catalog .shortcut-head,.saved-catalog .shortcut-search-row,
+.saved-catalog .shortcut-list,.saved-catalog .field-tip {margin-left:14px;margin-right:14px;}
+.saved-catalog .shortcut-head {margin-top:6px;}
+.saved-catalog .shortcut-search-row {margin-top:6px;}
+.last-price-hint {margin-top:0!important;}
+.settings-items-more {border-top:1px solid #e6eee9;padding-top:10px;margin:-8px 0 18px;}
+.settings-items-more summary {cursor:pointer;font-size:11px;font-weight:760;color:#206b53;padding:7px 0;}
+.settings-items-more .chip-wrap {padding-top:12px;max-height:210px;overflow:auto;margin-bottom:0;}
+.settings-grid {gap:17px;}
+
+/* Caretaker detail should remain scannable even with many money movements. */
+.caretaker-action-panel {margin-bottom:17px;}
+.caretaker-action-panel .care-action {min-height:112px;justify-content:flex-start;}
+.caretaker-action-panel .care-action:hover {box-shadow:0 8px 16px rgba(24,75,49,.06);}
+.caretaker-balance-grid {margin-bottom:17px;}
+.care-activity-list {max-height:480px;overflow:auto;scrollbar-width:thin;}
+.caretaker-report-grid strong {overflow-wrap:anywhere;}
+
+/* Useful visual consistency across tabs, pages and narrow screens. */
+.kind-tabs {overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin;padding:3px 1px 7px;}
+.kind-tabs a {flex:none;white-space:nowrap;}
+.calendar-card {box-shadow:0 10px 24px rgba(35,79,55,.04);}
+.calendar-day:focus-visible {outline:3px solid #3e9d82;outline-offset:-2px;}
+.table-card tr:hover td {background:#fbfdfb;}
+.table-scroll {scrollbar-width:thin;}
+.entry-shell {max-width:930px;}
+.form-grid {gap:17px 19px;}
+.entry-card {padding:28px;}
+.field textarea {min-height:76px;}
+.mobile-nav a {line-height:1.1;}
+
+@media (max-width:1330px) {
+  .settlement-workspace {grid-template-columns:minmax(260px,.82fr) minmax(0,1.5fr);}
+  .settlement-member-grid {grid-template-columns:1fr;}
+}
+@media (max-width:1170px) {
+  .dashboard-entry-layout {grid-template-columns:1fr;}
+  .dashboard-basket-feature {min-height:152px;}
+  .report-account-grid {grid-template-columns:1fr;}
+  .report-account-grid .settlement-report-totals,
+  .report-account-grid .caretaker-report-grid {grid-template-columns:repeat(4,minmax(0,1fr));}
+  .settlement-workspace {grid-template-columns:minmax(245px,.9fr) minmax(0,1.3fr);}
+  .basket-layout {grid-template-columns:1fr;}
+  .basket-summary-panel {position:static;}
+  .basket-head-fields {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:970px) {
+  .settlement-workspace {grid-template-columns:1fr;}
+  .settlement-settings {position:static;}
+  .settlement-settings .settlement-target-grid {grid-template-columns:repeat(2,minmax(0,1fr));max-height:none;}
+  .settlement-member-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .report-account-grid .settlement-report-totals,
+  .report-account-grid .caretaker-report-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:760px) {
+  .content {padding:24px 15px calc(112px + env(safe-area-inset-bottom));}
+  .page-head {margin-bottom:20px;}
+  .page-head h1 {font-size:27px;}
+  .dashboard-section {margin-bottom:22px;}
+  .dashboard-section-title {align-items:start;gap:8px;}
+  .dashboard-section-title h2 {font-size:16px;}
+  .dashboard-section-caption {display:none;}
+  .dashboard-entry-layout {grid-template-columns:1fr;gap:10px;}
+  .dashboard-entry-layout .action-grid {gap:9px;}
+  .dashboard-entry-layout .action {padding:12px;min-height:76px;}
+  .dashboard-entry-layout .action-icon {width:33px;height:33px;}
+  .dashboard-entry-layout .action strong {font-size:11px;}
+  .dashboard-entry-layout .action small {font-size:9px;}
+  .dashboard-basket-feature {padding:18px;min-height:146px;}
+  .dashboard-basket-feature>strong {font-size:18px;margin-top:13px;}
+  .dashboard-route-grid {grid-template-columns:1fr;gap:9px;}
+  .dashboard-route-card {padding:15px;gap:11px;}
+  .dashboard-route-icon {width:37px;height:37px;}
+  .dashboard-insights>.card {min-height:0;}
+  .report-account-grid {gap:11px;}
+  .report-account-grid>.card {padding:17px;}
+  .settlement-workspace {gap:12px;}
+  .settlement-settings .settlement-target-grid {grid-template-columns:1fr;}
+  .settlement-member-grid {grid-template-columns:1fr;}
+  .basket-head-fields {grid-template-columns:1fr;}
+  .entry-card {padding:17px;}
+  .dashboard-footer-links {flex-direction:column;}
+}
+@media (max-width:430px) {
+  .dashboard-entry-layout .action-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .dashboard-entry-layout .action strong {font-size:11px;}
+  .report-account-grid .settlement-report-totals,
+  .report-account-grid .caretaker-report-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .report-account-grid .settlement-report-totals strong,
+  .report-account-grid .caretaker-report-grid strong {font-size:16px;}
+  .dashboard-route-card small {font-size:10px;}
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after {scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;}
+}
+@media print {
+  .dashboard-entry-section,.dashboard-route-grid,.dashboard-footer-links,.saved-catalog,.basket-feature-cta {display:none!important;}
+  .report-account-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+  .settlement-workspace {display:block;}
+  .settlement-settings {display:none;}
+  .card {box-shadow:none!important;}
+  .caretaker-action-panel {display:none;}
+}

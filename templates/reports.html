@@ -2,11 +2,12 @@
 {% block content %}
   <div class="page-head"><div><p class="eyebrow">MONTHLY REVIEW</p><h1>{{ data.label }} report</h1><p class="subtitle">A clear picture of your apartment's finances.</p></div><div class="head-controls"><form method="get" class="month-select"><label for="month">Month</label><input type="month" id="month" name="month" value="{{ data.month }}" onchange="this.form.submit()"></form><button class="btn btn-outline" onclick="window.print()">Print report ↗</button></div></div>
   <div class="report-hero card"><p class="eyebrow">HOW YOUR SHARED FUND MOVED</p><div class="report-math"><div><small>Opening cash</small><strong>{{ money(data.opening) }}</strong></div><span>+</span><div><small>Money in</small><strong>{{ money(data.incoming) }}</strong></div><span>−</span><div><small>Cash out</small><strong>{{ money(data.outgoing) }}</strong></div><span>=</span><div class="report-result"><small>Closing cash</small><strong>{{ money(data.closing) }}</strong></div></div></div>
-  <section class="small-stat-grid">
+  <section class="small-stat-grid report-stat-grid">
     <div class="card small-stat"><span>Household spending</span><strong>{{ money(data.household) }}</strong><small>Including caretaker-paid items</small></div>
     <div class="card small-stat"><span>Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Owed by roommates as of month-end</small></div>
     <div class="card small-stat"><span>Caretaker amounts unpaid</span><strong>{{ money(data.current.caretaker_due + data.current.expenses_due) }}</strong><small>Personal advances + shared purchases</small></div>
   </section>
+  <div class="report-account-grid" aria-label="Month-end account summaries">
   <section class="card panel settlement-report-section">
     <div class="panel-title"><div><h3>Roommate settlement summary</h3>
       <p>Personal payment targets and unpaid advances, calculated at month-end.</p></div>
@@ -32,7 +33,8 @@
     </div>
     <p class="care-footnote">Caretaker-paid household purchases are already included in spending above. Borrowing and repayments are balance movements, not additional expenses.</p>
   </section>
-  <section class="two-column">
+  </div>
+  <section class="two-column report-analytics-grid">
     <div class="card panel"><div class="panel-title"><div><h3>Category breakdown</h3><p>Most money spent in {{ data.label }}</p></div></div>
       {% if data.by_category %}{% for name, amount in data.by_category %}<div class="bar-item"><div class="bar-label"><span>{{ name }}</span><strong>{{ money(amount) }}</strong></div><div class="bar-track"><div class="bar-fill palette-{{ loop.index0 % 5 }}" style="width:{{ (amount / data.household * 100) | round(2) }}%"></div></div></div>{% endfor %}{% else %}<div class="empty">No shared purchases recorded.</div>{% endif %}
     </div>

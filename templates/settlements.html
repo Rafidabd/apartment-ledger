@@ -22,6 +22,7 @@
   <div class="card settle-summary-box"><span>Shared-fund advances unpaid</span><strong>{{ money(totals.fund_due) }}</strong><small>Outstanding at month-end</small></div>
   <div class="card settle-summary-box"><span>Caretaker personal loans unpaid</span><strong>{{ money(totals.caretaker_due) }}</strong><small>Outstanding at month-end</small></div>
 </div>
+<div class="settlement-workspace">
 <section class="card panel settlement-settings">
   <div class="panel-title">
     <div><h3>Expected monthly contributions</h3>
@@ -89,6 +90,7 @@
   </div>
   {% else %}<div class="empty">No roommates have been added yet.</div>{% endif %}
 </section>
+</div>
 <div class="settlement-explain">
   <strong>Important distinction</strong>
   <p>“Known amount to follow up” is the unpaid contribution target (when set) plus outstanding personal and shared-fund advances. It is a follow-up figure, not an expense or a cash transaction. Targets are defined per month and are not automatically carried into the next month; loans do carry forward until repaid. The caretaker's household reimbursements belong to the collective fund and are shown separately in the caretaker account.</p>

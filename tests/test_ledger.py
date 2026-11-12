@@ -536,5 +536,33 @@ class LedgerTests(unittest.TestCase):
 
 
 
+    def test_refined_layout_pages_render_and_keep_core_entry_controls(self):
+        pages = ('/', '/calendar', '/caretaker', '/settlements',
+                 '/reports', '/basket', '/settings', '/record/expense')
+        for path in pages:
+            with self.subTest(path=path):
+                result = self.client.get(path)
+                self.assertEqual(result.status_code, 200)
+                self.assertIn(b'polish.css', result.data)
+        dashboard = self.client.get('/')
+        self.assertIn(b'dashboard-entry-layout', dashboard.data)
+        self.assertIn(b'dashboard-route-grid', dashboard.data)
+        self.assertIn(b'/basket', dashboard.data)
+        report = self.client.get('/reports')
+        self.assertIn(b'report-account-grid', report.data)
+        self.assertIn(b'Roommate settlement summary', report.data)
+        self.assertIn(b'Caretaker and shared-fund settlements', report.data)
+        settlements = self.client.get('/settlements')
+        self.assertIn(b'settlement-workspace', settlements.data)
+        self.assertIn(b'name="target_1"', settlements.data)
+        expense = self.client.get('/record/expense')
+        self.assertIn(b'<details class="field wide item-shortcuts saved-catalog"', expense.data)
+        self.assertIn(b'id="last-price-hint"', expense.data)
+        self.assertIn(b'id="item-name" data-item-autocomplete', expense.data)
+        settings = self.client.get('/settings')
+        self.assertIn(b'settings-items-more', settings.data)
+
+
+
 if __name__ == '__main__':
     unittest.main()

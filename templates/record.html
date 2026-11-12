@@ -22,8 +22,9 @@
               <option value="">Select category</option>{% for cat in categories %}<option value="{{ cat.id }}" {% if selected_category == cat.id|string or (not selected_category and cat.name == 'Groceries') %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}</select></div>
             <div class="field"><label for="item-name">Item / পণ্যের নাম</label><input name="item" id="item-name" data-item-autocomplete placeholder="Rice, ডাল, বেগুন, electricity..." value="{{ request.form.get('item','') }}" maxlength="120" required autocomplete="off" lang="und">
               <small class="field-tip">Type in English or বাংলা using your keyboard.</small></div>
-            <div class="field wide item-shortcuts" data-item-picker>
-              <div class="shortcut-head"><span><strong>Your saved items / পরিচিত বাজার</strong> <span class="hint">Tap once instead of typing.</span></span><a href="{{ url_for('settings') }}">Manage ↗</a></div>
+            <details class="field wide item-shortcuts saved-catalog" data-item-picker>
+              <summary><span><strong>Browse saved items / পরিচিত বাজার</strong><small>Optional — typing above finds matching names automatically.</small></span><span aria-hidden="true" class="catalog-expand-icon">⌄</span></summary>
+              <div class="shortcut-head"><span class="hint">Tap an item to fill the field.</span><a href="{{ url_for('settings') }}">Manage ↗</a></div>
               <div class="shortcut-search-row">
                 <input type="search" id="saved-item-search" autocomplete="off" aria-label="Search saved items" placeholder="Find rice, চাল, ডাল, eggs…">
                 <button type="button" class="shortcut-expand" id="show-all-items" hidden>Show all</button>
@@ -35,9 +36,9 @@
               </div>
               <small class="field-tip item-shortcuts-empty" hidden>No saved items found in this category. Enter a name above.</small>
               <small class="field-tip" id="shortcut-count" aria-live="polite"></small>
-              <div class="last-price-hint" id="last-price-hint" hidden>
-                <span id="last-price-text"></span><button type="button" id="use-last-price">Use last price</button>
-              </div>
+            </details>
+            <div class="field wide last-price-hint" id="last-price-hint" hidden>
+              <span id="last-price-text"></span><button type="button" id="use-last-price">Use last price</button>
             </div>
             <div class="field wide remember-item-row" id="remember-item-row">
               <label class="remember-item-label" for="remember-item">
@@ -64,6 +65,6 @@
       </form>
       {% endif %}
     </div>
-    <p class="footnote">Every entry changes the appropriate ledger automatically. Mistakes can be removed from Transactions.</p>
+    <p class="footnote">Entries update the shared ledger automatically. You can correct a recorded purchase from Transactions without deleting it.</p>
   </div>
 {% endblock %}

@@ -32,6 +32,12 @@ The quick-entry screen offers autocomplete suggestions grouped by category as yo
 
 For a saved item you've purchased before, the form shows its **last paid price** as a reference. Tap **Use last price** if it still applies; otherwise enter a new amount. The **Save & add another** action preserves the day and category and returns focus to the item field. Item labels and quantities accept Bengali text; use your device's Bengali keyboard/input method to type them. The app doesn't automatically translate or transliterate names.
 
+## Interface and daily workflow
+
+The dashboard groups the main tasks into **quick entry**, **caretaker and roommate accounts**, and **money still to settle**. The monthly report shows the roommate and caretaker summaries next to one another on larger screens, rather than as a long stack.
+
+On a wider screen, the shopping basket keeps payment details in a side panel beside the purchased items, while monthly roommate targets sit next to the individual balances. On a phone, these layouts adapt to a single column so fields remain readable. Saved grocery names still appear while typing in Bengali or English; the optional item catalog is tucked into an expandable section.
+
 ## Run it locally
 
 You'll need **Python 3.10+** and a browser. On Windows, double-click `run.bat`. On macOS/Linux, run `./run.sh`. The launchers create a virtual environment and install Flask on the first run.
