@@ -258,5 +258,109 @@ class LedgerTests(unittest.TestCase):
 
 
 
+    def test_shopping_basket_records_multiple_items_and_saved_names(self):
+        self.record('money', 1000, money_type='contribution', member_id='1')
+        response = self.post('/basket', {
+            'tx_date': '2026-11-11', 'tx_time': '14:15', 'payer': 'shared',
+            'item[]': ['চাল', 'Fresh coriander'],
+            'amount[]': ['450.00', '60.50'],
+            'category_id[]': ['1', '1'],
+            'quantity[]': ['2 kg', '১ আঁটি'],
+            'remember[]': ['1', '0'],
+            'note': 'Friday bazaar'
+        }, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].endswith('/day/2026-11-11'))
+        import sqlite3
+        with sqlite3.connect(self.app.config['DATABASE']) as connection:
+            rows = connection.execute(
+                "SELECT item,amount,tx_time,kind FROM transactions WHERE kind='expense' ORDER BY id"
+            ).fetchall()
+            unsaved = connection.execute("SELECT COUNT(*) FROM items WHERE name='Fresh coriander'").fetchone()[0]
+        self.assertEqual(rows, [('চাল', 45000, '14:15', 'expense'),
+                                ('Fresh coriander', 6050, '14:15', 'expense')])
+        self.assertEqual(unsaved, 0)
+        with self.app.app_context():
+            month = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        self.assertEqual(month['closing'], 48950)
+        self.assertEqual(month['household'], 51050)
+
+    def test_invalid_basket_does_not_partially_save(self):
+        response = self.post('/basket', {
+            'tx_date': '2026-11-11', 'payer': 'shared',
+            'item[]': ['Eggs', 'Bad amount'],
+            'amount[]': ['120', '-50'],
+            'category_id[]': ['1', '1'],
+            'quantity[]': ['', ''],
+            'remember[]': ['1', '1'],
+        })
+        self.assertIn(b'Item 2:', response.data)
+        import sqlite3
+        with sqlite3.connect(self.app.config['DATABASE']) as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM transactions").fetchone()[0], 0)
+
+    def test_caretaker_basket_creates_reimbursement_not_cash_spending(self):
+        response = self.post('/basket', {
+            'tx_date': '2026-11-11', 'payer': 'caretaker',
+            'item[]': ['Fish', 'পেঁয়াজ'],
+            'amount[]': ['200', '90'],
+            'category_id[]': ['1', '1'],
+            'quantity[]': ['', ''],
+            'remember[]': ['1', '1'],
+        })
+        self.assertIn(b'Saved 2 purchases', response.data)
+        with self.app.app_context():
+            summary = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        self.assertEqual(summary['closing'], 0)
+        self.assertEqual(summary['household'], 29000)
+        self.assertEqual(summary['current']['expenses_due'], 29000)
+
+    def test_expense_edit_recalculates_balance_and_audits_changes(self):
+        self.record('money', 1000, money_type='contribution', member_id='1')
+        self.record('expense', 450, item='চাল', category_id='1')
+        response = self.post('/expenses/2/edit', {
+            'tx_date': '2026-11-11', 'tx_time': '15:20', 'amount': '500',
+            'category_id': '1', 'item': 'মিনিকেট চাল', 'quantity': '2 kg', 'note': 'Correct receipt',
+            'remember_item': '1', 'return_day': '1',
+        }, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].endswith('/day/2026-11-11'))
+        with self.app.app_context():
+            month = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        self.assertEqual(month['household'], 50000)
+        self.assertEqual(month['closing'], 50000)
+        import sqlite3
+        with sqlite3.connect(self.app.config['DATABASE']) as connection:
+            record = connection.execute(
+                "SELECT tx_date,tx_time,item,amount FROM transactions WHERE id=2"
+            ).fetchone()
+            history = connection.execute(
+                "SELECT previous,updated FROM expense_corrections WHERE tx_id=2"
+            ).fetchone()
+        self.assertEqual(record, ('2026-11-11', '15:20', 'মিনিকেট চাল', 50000))
+        self.assertIsNotNone(history)
+        self.assertIn('"amount": 45000', history[0])
+        self.assertIn('"amount": 50000', history[1])
+
+    def test_reimbursed_caretaker_purchase_cannot_be_understated_or_moved_after_repayment(self):
+        self.record('caretaker-expense', 300, item='Oil', category_id='1', tx_date='2026-11-10')
+        self.record('money', 500, money_type='contribution', member_id='1')
+        self.record('reimburse', 200, related_id='1', tx_date='2026-11-11')
+        base = {'tx_date': '2026-11-10', 'tx_time': '',
+                'category_id': '1', 'item': 'Oil', 'quantity': '', 'note': ''}
+        res1 = self.post('/expenses/1/edit', {**base, 'amount': '150'})
+        self.assertIn(b'cannot be less than caretaker reimbursements', res1.data)
+        res2 = self.post('/expenses/1/edit', {**base, 'amount': '350', 'tx_date': '2026-11-12'})
+        self.assertIn(b'cannot come after an existing reimbursement', res2.data)
+        res3 = self.post('/expenses/1/edit', {**base, 'amount': '350'})
+        self.assertIn(b'Purchase corrected', res3.data)
+        with self.app.app_context():
+            summary = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        self.assertEqual(summary['current']['expenses_due'], 15000)
+        self.assertEqual(summary['closing'], 30000)
+        self.assertEqual(self.client.get('/expenses/2/edit').status_code, 404)
+
+
+
 if __name__ == '__main__':
     unittest.main()
