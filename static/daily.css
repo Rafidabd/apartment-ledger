@@ -187,3 +187,97 @@ a.calendar-day:focus-visible, .item-shortcut:focus-visible { outline:3px solid #
   .basket-row-grid{grid-template-columns:1fr}
   .basket-head-fields{grid-template-columns:1fr}
 }
+
+
+/* Search directly in the item field: English and Bangla results. */
+.has-item-suggestions { position:relative; }
+.item-suggestion-menu {
+  position:absolute;z-index:35;display:flex;flex-direction:column;
+  border:1px solid #b9d9cc;border-radius:12px;background:#fff;
+  box-shadow:0 16px 36px rgba(19,71,58,.16);padding:5px;
+  max-height:270px;overflow-y:auto;overscroll-behavior:contain;
+}
+.item-suggestion-menu[hidden] { display:none!important; }
+.item-suggestion-option {
+  display:block;text-align:left;width:100%;flex-shrink:0;border:0;
+  padding:11px 13px;color:#194b3e;background:transparent;
+  cursor:pointer;border-radius:8px;font-size:14px;line-height:1.4;
+}
+.item-suggestion-option:hover,.item-suggestion-option.active {
+  background:#e8f5ef;color:#0c5947;
+}
+.item-suggestion-option:focus-visible { outline:2px solid #22866e;outline-offset:-2px; }
+
+/* Dedicated caretaker account — same financial ledger and visual language. */
+.caretaker-intro {
+  background:#edf7f2;border:1px solid #cce5d9;border-radius:15px;
+  padding:16px 20px;margin:0 0 20px;color:#215a4a;
+}
+.caretaker-intro strong { display:block;font-size:14px;margin-bottom:4px; }
+.caretaker-intro p {font-size:12px;line-height:1.65;margin:0;color:#537669; }
+.caretaker-balance-grid {
+  display:grid;grid-template-columns:minmax(0,1.45fr) repeat(2,minmax(0,1fr));
+  gap:14px;margin-bottom:20px;
+}
+.caretaker-main-card,.caretaker-secondary-card {padding:22px;display:flex;flex-direction:column;gap:13px;}
+.caretaker-main-card {background:#e9f5ee;border:1px solid #c4e0d0;}
+.care-label {font-size:12px;font-weight:700;color:#4b7164;}
+.care-value {font-size:clamp(23px,3vw,32px);letter-spacing:-.05em;color:#115943;font-variant-numeric:tabular-nums;}
+.caretaker-secondary-card small {font-size:11px;color:var(--muted);line-height:1.6;}
+.caretaker-mini-pair {display:flex;flex-direction:column;gap:9px;border-top:1px solid #c8dfd2;padding-top:12px;}
+.caretaker-mini-pair span {display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#487265;}
+.caretaker-mini-pair b {white-space:nowrap;color:#125d46;font-variant-numeric:tabular-nums;}
+.caretaker-action-panel {margin-bottom:20px;}
+.caretaker-actions {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;}
+.care-action {border:1px solid #d9e8e0;background:#f9fcfa;border-radius:13px;
+  padding:15px;display:flex;flex-direction:column;gap:7px;min-width:0;transition:background .16s,border-color .16s,transform .16s;}
+.care-action:hover {border-color:#86c6b1;background:#eef8f3;transform:translateY(-2px);}
+.care-action span {background:#e1f2e9;color:#17634d;font-size:20px;font-weight:800;width:36px;height:36px;
+  border-radius:10px;display:grid;place-items:center;}
+.care-action strong {font-size:12px;color:#1a493b;line-height:1.4;}
+.care-action small {font-size:11px;color:#698075;line-height:1.5;}
+.care-outstanding {display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+  border-bottom:1px solid var(--border);padding:13px 0;}
+.care-outstanding:last-child {border-bottom:0;}
+.care-outstanding div {display:flex;flex-direction:column;gap:5px;min-width:0;}
+.care-outstanding strong {font-size:12px;overflow-wrap:anywhere;}
+.care-outstanding small {font-size:10px;color:var(--muted);}
+.care-outstanding>span {font-size:13px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.care-footnote {color:var(--muted);font-size:11px;line-height:1.65;margin:15px 0 0;}
+.care-activity {display:flex;justify-content:space-between;gap:18px;align-items:center;border-top:1px solid var(--border);padding:14px 0;}
+.care-activity-detail {display:flex;flex-direction:column;gap:5px;min-width:0;}
+.care-activity-detail strong {font-size:13px;overflow-wrap:anywhere;}
+.care-activity-detail small {font-size:11px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere;}
+.care-activity>strong {white-space:nowrap;font-size:13px;font-variant-numeric:tabular-nums;}
+.caretaker-report-section {margin:18px 0;}
+.caretaker-report-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px;}
+.caretaker-report-grid>div {padding:15px;border:1px solid #e0eee5;border-radius:12px;background:#f8fcf9;
+  display:flex;flex-direction:column;gap:7px;}
+.caretaker-report-grid span {font-size:11px;color:#5b766b;}
+.caretaker-report-grid strong {font-size:20px;letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
+.caretaker-dashboard-link {border:1px solid #d1e7da;border-radius:14px;background:#f0f8f3;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 19px;margin:12px 0 18px;}
+.caretaker-dashboard-link strong {font-size:13px;color:#1b5946;}
+.caretaker-dashboard-link p {font-size:11px;line-height:1.6;color:#668275;margin:5px 0 0;}
+.caretaker-dashboard-link .btn {white-space:nowrap;flex-shrink:0;}
+@media (max-width:1050px){
+  .caretaker-balance-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .caretaker-main-card {grid-column:1/-1;}
+  .caretaker-actions {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:680px){
+  .item-suggestion-option {font-size:15px;padding:13px;}
+  .caretaker-balance-grid {grid-template-columns:1fr;}
+  .caretaker-main-card {grid-column:auto;}
+  .caretaker-actions {grid-template-columns:1fr 1fr;gap:8px;}
+  .care-action {padding:11px;}
+  .caretaker-dashboard-link {flex-direction:column;align-items:stretch;}
+  .caretaker-dashboard-link .btn {width:100%;justify-content:center;}
+  .caretaker-report-grid {grid-template-columns:1fr;}
+}
+@media (max-width:380px){
+  .caretaker-actions {grid-template-columns:1fr;}
+}
+@media print {
+  .caretaker-actions,.caretaker-dashboard-link .btn {display:none!important;}
+}

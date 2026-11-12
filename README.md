@@ -10,10 +10,11 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 - Browse a monthly calendar; tap any date to view its entries and add more throughout the day.
 - Enter an entire market trip in the **Shopping basket**: select the date, who's paying, and each item, category, amount and optional quantity. Save all purchases together.
 - Correct an existing purchase's price, category, item name or date from the daily ledger or transaction history; changes are logged locally.
-- Pick frequently used items from a searchable set of shortcuts; common grocery names are included in English and Bengali (বাংলা).
+- Start typing in an item name field to see matching saved items right underneath. Works with English and Bengali (বাংলা); select a suggestion with a tap or the keyboard. No long dropdown needed.
 - Write custom item names in English, বাংলা, or a mixture. After entering a new item, choose whether to add it to the reusable list.
 - Optionally recall the last recorded price for a saved item. Prices are never filled in without a tap.
 - Track money received from each roommate's family, plus other deposits to the shared fund.
+- Use the dedicated **Caretaker** section to view all money exchanged with him, record advances, repayments, reimbursements, or caretaker-funded purchases.
 - Keep **shared-fund advances** separate from **personal loans from the caretaker**.
 - Record partial repayments and carry unpaid balances into the next month.
 - Track household purchases paid for from the caretaker's pocket, and reimburse him later **without double-counting the expense**.
@@ -22,11 +23,11 @@ Apartment Ledger is a small **Flask + SQLite** app for that routine. It's meant 
 
 The main screen is built around four actions: **Add expense**, **Add money**, **Record advance**, and **Record repayment**. The **Calendar** view shows daily household spending and transaction counts. Tap a day, then add separate expenses at different times. The optional time field defaults to the current time for today's entries; older dates can be left without a time.
 
-For a market trip with several purchases, open **Shopping basket** from the Dashboard or a specific calendar day. Add as many as 30 items, using saved-item dropdowns where convenient, and keep the payer consistent across the whole trip (shared fund *or* caretaker). A single save validates every line first and then records all entries together; an invalid line is never partially posted. The form shows the running sum while you enter amounts.
+For a market trip with several purchases, open **Shopping basket** from the Dashboard or a specific calendar day. Add as many as 30 items. Start typing an item name to find saved suggestions in the small pop-up right beneath the field, and keep the payer consistent across the whole trip (shared fund *or* caretaker). A single save validates every line first and then records all entries together; an invalid line is never partially posted. The form shows the running sum while you enter amounts.
 
 For a typo or a wrong price, select **Edit** on an expense in the Transactions list or daily view. The app keeps a correction history showing old and new values. It does not allow you to quietly change the original funding source, nor reduce a caretaker-paid expense below the amount already reimbursed.
 
-The quick-entry screen offers searchable, tappable saved items grouped by category. Start typing an item like "চাল", "ডাল", or "Eggs", or tap a saved item from the list. A new name triggers an inline **Add this to my item list?** checkbox (checked by default); uncheck it for a one-off purchase. The expense is still recorded either way. Saved item names are deduplicated within a category using Unicode normalization, so repeated Bengali names do not create separate shortcuts. You can also manage the catalog in Settings.
+The quick-entry screen offers autocomplete suggestions grouped by category as you type a name like "চাল", "ডাল", or "Eggs". Press the down/up arrow keys and Enter to select, or tap a match on your phone. The saved-item chips are still available if you prefer browsing. A new name triggers an inline **Add this to my item list?** checkbox (checked by default); uncheck it for a one-off purchase. The expense is still recorded either way. Saved item names are deduplicated within a category using Unicode normalization, so repeated Bengali names do not create separate shortcuts. You can also manage the catalog in Settings.
 
 For a saved item you've purchased before, the form shows its **last paid price** as a reference. Tap **Use last price** if it still applies; otherwise enter a new amount. The **Save & add another** action preserves the day and category and returns focus to the item field. Item labels and quantities accept Bengali text; use your device's Bengali keyboard/input method to type them. The app doesn't automatically translate or transliterate names.
 
@@ -62,6 +63,19 @@ If you start recording in the middle of a month, treat that opening amount as **
 
 The shared fund's closing balance is **cash remaining**, not profit. Personal advances aren't household expenses, and repaying a loan isn't new household income. A worked example is in [docs/ledger-rules.md](docs/ledger-rules.md).
 
+## Caretaker account (connected to the main ledger)
+
+The **Caretaker** navigation item is a separate view of the *same recorded transactions*, not a second set of finances:
+
+- **Caretaker's own money lent to a roommate:** money owed to him personally; never household grocery spending and never deducted from collective cash.
+- **Advance taken from shared funds held by the caretaker:** reduces shared cash and creates an amount owed back to the apartment fund, not to the caretaker personally.
+- **Personal advance repayment:** reduces that personal debt without changing shared-fund cash.
+- **Repayment to shared fund:** replenishes shared cash; does not count as new income from parents or household spending.
+- **Caretaker pays for shared groceries:** counts once as a household expense, with reimbursement owed to him.
+- **Reimbursing the caretaker for groceries:** reduces shared cash and reimbursement due, but does not record the groceries twice.
+
+Select any month in Caretaker to see those movements and the outstanding balances as of that month-end. The **monthly Report** includes the caretaker breakdown and links to the separate page. These values reconcile directly to the main dashboard.
+
 ## Data and privacy
 
 This is currently **a local, single-admin app**. It listens on `127.0.0.1`, not your public network. Don't expose it directly to the internet or put real household transaction data on GitHub.
@@ -79,7 +93,7 @@ After installing the dependencies:
 python -m unittest discover -s tests -v
 ```
 
-These tests cover the fund/caretaker split, partial repayments, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, repeat-entry navigation, atomic shopping baskets, and auditable expense corrections. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
+These tests cover the fund/caretaker split, partial repayments, caretaker-page reconciliation, ledger reconciliation, calendar days, date/time entry, Bengali and mixed-script purchases, optional saved items, Unicode name normalization, last-price reference, repeat-entry navigation, atomic shopping baskets, and auditable expense corrections. The GitHub workflow also runs JavaScript syntax checks. Automated checks are also configured in `.github/workflows/tests.yml` for when the repo is on GitHub.
 
 ## Current limits
 

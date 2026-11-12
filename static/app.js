@@ -15,8 +15,7 @@
   const category = document.getElementById('category');
   const input = document.getElementById('item-name');
   const itemPicker = document.querySelector('[data-item-picker]');
-  const savedList = document.getElementById('saved-items');
-  if (category && input && itemPicker && savedList) {
+  if (category && input && itemPicker) {
     const buttons = [...itemPicker.querySelectorAll('.item-shortcut')];
     const search = document.getElementById('saved-item-search');
     const showAll = document.getElementById('show-all-items');
@@ -62,12 +61,6 @@
       const visible = (expanded || query) ? filtered : filtered.slice(0, shortListLimit);
       const shown = new Set(visible);
       buttons.forEach(b => { b.hidden = !shown.has(b); });
-      savedList.replaceChildren();
-      selected.forEach(b => {
-        const option = document.createElement('option');
-        option.value = b.dataset.name;
-        savedList.appendChild(option);
-      });
       if (empty) empty.hidden = filtered.length !== 0;
       if (showAll) {
         showAll.hidden = !!query || selected.length <= shortListLimit;

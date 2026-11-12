@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div><p class="eyebrow">SEPARATE MONEY, ONE LEDGER</p><h1>Caretaker account</h1>
+    <p class="subtitle">Money borrowed, repaid, spent by the caretaker and reimbursed — all connected to the main dashboard and reports.</p></div>
+  <div class="head-controls">
+    <form method="get" class="month-select">
+      <label for="month">Month</label>
+      <input id="month" type="month" name="month" value="{{ data.month }}" onchange="this.form.submit()">
+    </form>
+    <a class="btn btn-outline" href="{{ url_for('reports', month=data.month) }}">Full monthly report ↗</a>
+  </div>
+</div>
+
+<div class="caretaker-intro">
+  <strong>Who owns the money?</strong>
+  <p>The caretaker may hold the apartment's shared cash and also lend from his own pocket. This page tracks both sources without counting personal loans as grocery expenses.</p>
+</div>
+
+<section class="caretaker-balance-grid">
+  <div class="card caretaker-main-card">
+    <span class="care-label">Still owed to caretaker personally</span>
+    <strong class="care-value">{{ money(data.caretaker.personal_due) }}</strong>
+    <div class="caretaker-mini-pair">
+      <span>Roommates' personal loans <b>{{ money(data.caretaker.personal_loans_due) }}</b></span>
+      <span>Household reimbursements <b>{{ money(data.caretaker.household_reimbursements_due) }}</b></span>
+    </div>
+  </div>
+  <div class="card caretaker-secondary-card">
+    <span class="care-label">Still owed to shared apartment fund</span>
+    <strong class="care-value">{{ money(data.caretaker.fund_advances_due) }}</strong>
+    <small>Advances taken out of money contributed by roommates — not the caretaker's personal money.</small>
+  </div>
+  <div class="card caretaker-secondary-card">
+    <span class="care-label">Shared cash remaining</span>
+    <strong class="care-value">{{ money(data.closing) }}</strong>
+    <small>Same closing balance as the main dashboard for {{ data.label }}.</small>
+  </div>
+</section>
+
+<section class="card panel caretaker-action-panel">
+  <div class="panel-title"><div><h3>Record money movements</h3><p>All actions write to the original transaction ledger.</p></div></div>
+  <div class="caretaker-actions">
+    <a class="care-action" href="{{ url_for('record',kind='advance',source='advance_caretaker',from_caretaker=1) }}">
+      <span>↙</span><strong>Take caretaker's money</strong><small>Personal loan to a roommate</small>
+    </a>
+    <a class="care-action" href="{{ url_for('record',kind='advance',source='advance_fund',from_caretaker=1) }}">
+      <span>⇄</span><strong>Take shared-fund money</strong><small>An advance from collective cash</small>
+    </a>
+    <a class="care-action" href="{{ url_for('record',kind='repayment',from_caretaker=1) }}">
+      <span>↗</span><strong>Record money returned</strong><small>Repay a personal or shared-fund advance</small>
+    </a>
+    <a class="care-action" href="{{ url_for('record',kind='caretaker-expense',from_caretaker=1) }}">
+      <span>▤</span><strong>Caretaker paid for groceries</strong><small>Shared household expense using his money</small>
+    </a>
+    <a class="care-action" href="{{ url_for('record',kind='reimburse',from_caretaker=1) }}">
+      <span>✓</span><strong>Reimburse caretaker</strong><small>Repay his household purchases from the fund</small>
+    </a>
+    <a class="care-action" href="{{ url_for('basket',payer='caretaker') }}">
+      <span>＋</span><strong>Caretaker shopping basket</strong><small>Enter multiple household purchases together</small>
+    </a>
+  </div>
+</section>
+
+<section class="two-column">
+  <div class="card panel">
+    <div class="panel-title"><div><h3>Money exchanged this month</h3>
+      <p>Movements during {{ data.label }}, not amounts still owed</p></div></div>
+    {% set flows = [
+      ('Caretaker lent to roommates', 'advance_caretaker'),
+      ('Roommates repaid caretaker', 'repayment_caretaker'),
+      ('Caretaker paid household expenses', 'caretaker_expense'),
+      ('Fund reimbursed caretaker', 'caretaker_reimbursement'),
+      ('Shared fund advances issued', 'advance_fund'),
+      ('Shared fund advances repaid', 'repayment_fund')
+    ] %}
+    {% for label, key in flows %}
+      <div class="simple-row"><span>{{ label }}</span><strong>{{ money(data.caretaker.totals[key]) }}</strong></div>
+    {% endfor %}
+    <p class="care-footnote">The caretaker's grocery purchases already appear in Household spending. Repayments and personal loans do not count as additional household expenses.</p>
+  </div>
+  <div class="card panel">
+    <div class="panel-title"><div><h3>Outstanding records</h3><p>Unpaid amounts as of the end of {{ data.label }}</p></div></div>
+    {% if data.caretaker.open %}
+      {% for entry in data.caretaker.open %}
+        <div class="care-outstanding">
+          <div><strong>
+            {% if entry.kind == 'advance_caretaker' %}Caretaker loan · {{ entry.member }}
+            {% elif entry.kind == 'advance_fund' %}Shared-fund advance · {{ entry.member }}
+            {% else %}Caretaker household purchase · {{ entry.item }}{% endif %}
+          </strong><small>{{ entry.date }}</small></div>
+          <span>{{ money(entry.remaining) }}</span>
+        </div>
+      {% endfor %}
+    {% else %}<div class="empty">All recorded advances and reimbursements are settled as of this month-end.</div>{% endif %}
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-title"><div><h3>Caretaker-related activity</h3><p>Recorded money movements in {{ data.label }}</p></div>
+    <a href="{{ url_for('transactions',month=data.month) }}">All transactions ↗</a>
+  </div>
+  {% if data.caretaker.records %}
+    <div class="care-activity-list">
+      {% for tx in data.caretaker.records %}
+      <div class="care-activity">
+        <div class="care-activity-detail"><strong>{{ tx.item or tx.member_name or kinds[tx.kind] }}</strong>
+          <small>{{ kinds[tx.kind] }} · {{ tx.tx_date }}{% if tx.tx_time %} · {{ tx.tx_time }}{% endif %}{% if tx.note %} · {{ tx.note }}{% endif %}</small>
+        </div>
+        <strong>{{ money(tx.amount) }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">Nothing recorded with the caretaker this month. Use one of the actions above to add a transaction.</div>
+  {% endif %}
+</section>
+<p class="footnote">All balances are calculated from the same transactions as the dashboard and monthly report. Money borrowed from the shared fund belongs to the apartment, not the caretaker.</p>
+{% endblock %}

@@ -344,7 +344,53 @@ def create_app(test_config=None):
             if tx["kind"] == "contribution":
                 m = tx["member_name"] or "Unknown"
                 members[m] = members.get(m, 0) + tx["amount"]
+        # Caretaker activity is a filtered view of the same ledger, never a second balance.
+        caretaker_kinds = {
+            "advance_fund", "advance_caretaker", "repayment_fund",
+            "repayment_caretaker", "caretaker_expense", "caretaker_reimbursement",
+        }
+        caretaker_activity = [tx for tx in rows if tx["kind"] in caretaker_kinds]
+        caretaker_totals = {
+            kind: sum(tx["amount"] for tx in caretaker_activity if tx["kind"] == kind)
+            for kind in caretaker_kinds
+        }
+        caretaker_open = []
+        personal_loans_by_member = {}
+        fund_advances_by_member = {}
+        for entry in current["remaining"].values():
+            if entry["remaining"] <= 0:
+                continue
+            original = entry["tx"]
+            kind = original["kind"]
+            if kind not in {"advance_fund", "advance_caretaker", "caretaker_expense"}:
+                continue
+            caretaker_open.append({
+                "kind": kind,
+                "date": original["tx_date"],
+                "member": original["member_name"] or "",
+                "item": original["item"] or "",
+                "remaining": entry["remaining"],
+                "id": original["id"],
+            })
+            if kind in {"advance_fund", "advance_caretaker"}:
+                who = original["member_name"] or "Unknown roommate"
+                target = (personal_loans_by_member if kind == "advance_caretaker"
+                          else fund_advances_by_member)
+                target[who] = target.get(who, 0) + entry["remaining"]
+        caretaker_open.sort(key=lambda entry: (entry["date"], entry["id"]), reverse=True)
+        caretaker = {
+            "records": caretaker_activity,
+            "totals": caretaker_totals,
+            "personal_due": current["caretaker_due"] + current["expenses_due"],
+            "personal_loans_due": current["caretaker_due"],
+            "household_reimbursements_due": current["expenses_due"],
+            "fund_advances_due": current["fund_due"],
+            "personal_loans_by_member": sorted(personal_loans_by_member.items()),
+            "fund_advances_by_member": sorted(fund_advances_by_member.items()),
+            "open": caretaker_open,
+        }
         return {
+            "caretaker": caretaker,
             "month": month, "label": label, "rows": rows, "start": start, "end": end,
             "opening": prev["cash"], "closing": current["cash"], "incoming": incoming,
             "outgoing": outgoing, "household": household, "contributions": contributions,
@@ -360,6 +406,14 @@ def create_app(test_config=None):
         except ValueError:
             abort(400, description="Invalid month.")
         return render_template("dashboard.html", title="Dashboard", data=data)
+
+    @app.get("/caretaker")
+    def caretaker_view():
+        try:
+            data = monthly_data(request.args.get("month"))
+        except ValueError:
+            abort(400, description="Invalid month.")
+        return render_template("caretaker.html", title="Caretaker account", data=data)
 
     @app.get("/calendar")
     def calendar_view():
@@ -429,6 +483,8 @@ def create_app(test_config=None):
         entry_time = request.form.get(
             "tx_time", datetime.now().strftime("%H:%M") if entry_date == date.today().isoformat() else "")
         from_day = request.args.get("from_day") == "1" or request.form.get("return_day") == "1"
+        from_caretaker = (request.args.get("from_caretaker") == "1" or
+                          request.form.get("return_caretaker") == "1")
         outstanding = balances_at("9999-12-31")["remaining"]
         available = [(a, entry) for a, entry in outstanding.items() if entry["remaining"] > 0]
         if kind == "repayment":
@@ -498,13 +554,17 @@ def create_app(test_config=None):
                                             again="1"))
                 if from_day:
                     return redirect(url_for("day_view", day=tx_date))
+                if from_caretaker:
+                    return redirect(url_for("caretaker_view", month=tx_date[:7]))
                 return redirect(url_for("dashboard", month=tx_date[:7]))
             except ValueError as e:
                 flash(str(e), "error")
         return render_template("record.html", title="Record a transaction", kind=kind,
                                members=members, categories=categories, items=items, available=available,
                                entry_date=entry_date, entry_time=entry_time, from_day=from_day,
-                               selected_category=request.form.get("category_id", request.args.get("category", "")))
+                               from_caretaker=from_caretaker,
+                               selected_category=request.form.get("category_id", request.args.get("category", "")),
+                               selected_source=request.form.get("source", request.args.get("source", "")))
 
     @app.route("/basket", methods=["GET", "POST"])
     def basket():
@@ -523,7 +583,7 @@ def create_app(test_config=None):
         tx_date = request.form.get("tx_date", chosen_day or date.today().isoformat())
         tx_time = request.form.get("tx_time", datetime.now().strftime("%H:%M")
             if tx_date == date.today().isoformat() else "")
-        payer = request.form.get("payer", "shared")
+        payer = request.form.get("payer", request.args.get("payer", "shared"))
         rows = []
         if request.method == "POST":
             names = request.form.getlist("item[]")

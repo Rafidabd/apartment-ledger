@@ -23,6 +23,10 @@
     <a class="action" href="{{ url_for('record',kind='advance') }}"><span class="action-icon">⇄</span><span><strong>Record advance</strong><small>Shared fund or caretaker's money</small></span><b>↗</b></a>
     <a class="action" href="{{ url_for('record',kind='repayment') }}"><span class="action-icon">✓</span><span><strong>Record repayment</strong><small>Settle someone's advance</small></span><b>↗</b></a>
   </section>
+  <div class="caretaker-dashboard-link">
+    <div><strong>Borrowing or settling money with the caretaker?</strong><p>Track his personal loans, shared-fund advances, reimbursements and purchases in one place.</p></div>
+    <a class="btn btn-outline" href="{{ url_for('caretaker_view',month=data.month) }}">Open caretaker account ↗</a>
+  </div>
   <section class="small-stat-grid">
     <div class="card small-stat"><span>↗ Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Roommates owe the shared fund</small></div>
     <div class="card small-stat"><span>⇄ Caretaker advances unpaid</span><strong>{{ money(data.current.caretaker_due) }}</strong><small>Roommates owe the caretaker</small></div>
