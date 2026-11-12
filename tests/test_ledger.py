@@ -427,7 +427,14 @@ class LedgerTests(unittest.TestCase):
         self.assertIn(b'class="basket-item-name" data-item-autocomplete', basket.data)
         self.assertNotIn(b'class="basket-pick"', basket.data)
         self.assertIn(b'id="basket-catalog"', basket.data)
-        self.assertIn('পেঁয়াজ'.encode(), basket.data)
+        # Jinja's tojson escapes non-ASCII safely; decode rather than looking for raw bytes.
+        import json
+        import re
+        match = re.search(r'<script type="application/json" id="basket-catalog">(.*?)</script>',
+                          basket.get_data(as_text=True), re.S)
+        self.assertIsNotNone(match)
+        catalog = json.loads(match.group(1))
+        self.assertTrue(any(item['name'] == 'পেঁয়াজ' for item in catalog))
 
 
 
