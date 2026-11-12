@@ -1,5 +1,5 @@
 /* Public portfolio preview. All data below is fictional, bundled in this file.
- * No API, cookies, localStorage, authentication, or write endpoints.
+ * This script uses only embedded examples and contains no persistence or network calls.
  */
 (() => {
   'use strict';
