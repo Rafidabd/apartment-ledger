@@ -583,7 +583,7 @@ def create_app(test_config=None):
         tx_date = request.form.get("tx_date", chosen_day or date.today().isoformat())
         tx_time = request.form.get("tx_time", datetime.now().strftime("%H:%M")
             if tx_date == date.today().isoformat() else "")
-        payer = request.form.get("payer", "shared")
+        payer = request.form.get("payer", request.args.get("payer", "shared"))
         rows = []
         if request.method == "POST":
             names = request.form.getlist("item[]")
