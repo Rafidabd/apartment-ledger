@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
   {% set names = {'expense':'Add an expense','money':'Add money','advance':'Record an advance','repayment':'Record a repayment','caretaker-expense':'Caretaker-paid expense','reimburse':'Reimburse caretaker'} %}
-  <div class="page-head"><div><p class="eyebrow">QUICK ENTRY</p><h1>{{ names[kind] }}</h1><p class="subtitle">A few details, one tap, done.</p></div><a class="btn btn-outline" href="{{ url_for('day_view',day=entry_date) if from_day else url_for('dashboard') }}">← {{ 'Back to day' if from_day else 'Dashboard' }}</a></div>
+  <div class="page-head"><div><p class="eyebrow">QUICK ENTRY</p><h1>{{ names[kind] }}</h1><p class="subtitle">A few details, one tap, done.</p></div><a class="btn btn-outline" href="{{ url_for('day_view',day=entry_date) if from_day else url_for('caretaker_view',month=entry_date[:7]) if from_caretaker else url_for('dashboard') }}">← {{ 'Back to day' if from_day else 'Caretaker account' if from_caretaker else 'Dashboard' }}</a></div>
   <div class="entry-shell">
     <nav class="kind-tabs" aria-label="Transaction type">
       {% for key,label in [('expense','Expense'),('money','Money in'),('advance','Advance'),('repayment','Repayment'),('caretaker-expense','Caretaker purchase'),('reimburse','Reimburse')] %}
-        <a href="{{ url_for('record',kind=key,date=entry_date if from_day else None,from_day=1 if from_day else None) }}" class="{% if kind==key %}selected{% endif %}">{{ label }}</a>
+        <a href="{{ url_for('record',kind=key,date=entry_date if from_day else None,from_day=1 if from_day else None,from_caretaker=1 if from_caretaker else None) }}" class="{% if kind==key %}selected{% endif %}">{{ label }}</a>
       {% endfor %}
     </nav>
     <div class="card entry-card">
@@ -13,7 +13,7 @@
         <div class="empty"><strong>No outstanding balances found.</strong><p>Record an advance or caretaker-paid purchase first.</p><a class="btn btn-primary" href="{{ url_for('record',kind='advance') }}">Record an advance</a></div>
       {% else %}
       <form action="{{ url_for('record',kind=kind) }}" method="post" id="entry-form" data-repeat="{{ '1' if request.args.get('again') == '1' else '0' }}">
-        <input type="hidden" name="csrf" value="{{ csrf }}">{% if from_day %}<input type="hidden" name="return_day" value="1">{% endif %}
+        <input type="hidden" name="csrf" value="{{ csrf }}">{% if from_day %}<input type="hidden" name="return_day" value="1">{% endif %}{% if from_caretaker %}<input type="hidden" name="return_caretaker" value="1">{% endif %}
         <div class="form-grid">
           <div class="field"><label for="tx_date">Date & time</label><div class="entry-date-time"><input id="tx_date" aria-label="Date" name="tx_date" type="date" value="{{ entry_date }}" required><input id="tx_time" aria-label="Time (optional)" name="tx_time" type="time" value="{{ entry_time }}"></div><small class="field-tip">Time is optional for older entries.</small></div>
           <div class="field"><label for="amount">Amount <span class="hint">(BDT)</span></label><div class="money-field"><span>৳</span><input id="amount" name="amount" inputmode="decimal" type="number" step="0.01" min="0.01" placeholder="0.00" value="{{ request.form.get('amount','') }}" required autofocus></div></div>
@@ -51,7 +51,7 @@
             <div class="field wide" id="member-money"><label for="money-member">Which roommate?</label><select name="member_id" id="money-member"><option value="">Select roommate</option>{% for m in members %}<option value="{{ m.id }}" {% if request.form.get('member_id') == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select><div class="field-tip">Need someone new? <a href="{{ url_for('settings') }}">Add a roommate in Settings</a>.</div></div>
           {% elif kind == 'advance' %}
             <div class="field wide"><label for="advance-member">Who received the money?</label><select id="advance-member" name="member_id" required><option value="">Select roommate</option>{% for m in members %}<option value="{{ m.id }}" {% if request.form.get('member_id')==m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select></div>
-            <div class="field wide"><label for="source">Where did the money come from?</label><select name="source" id="source" required><option value="advance_fund" {% if request.form.get('source')=='advance_fund' %}selected{% endif %}>Shared apartment fund — reduces fund balance</option><option value="advance_caretaker" {% if request.form.get('source')=='advance_caretaker' %}selected{% endif %}>Caretaker's own pocket — fund unaffected</option></select></div>
+            <div class="field wide"><label for="source">Where did the money come from?</label><select name="source" id="source" required><option value="advance_fund" {% if selected_source=='advance_fund' %}selected{% endif %}>Shared apartment fund — reduces fund balance</option><option value="advance_caretaker" {% if selected_source=='advance_caretaker' %}selected{% endif %}>Caretaker's own pocket — fund unaffected</option></select></div>
           {% elif kind in ['repayment','reimburse'] %}
             <div class="field wide"><label for="related_id">Which outstanding amount is being settled?</label><select id="related_id" name="related_id" required><option value="">Choose an outstanding record</option>
               {% for tx_id, entry in available %}<option value="{{ tx_id }}" {% if request.form.get('related_id')==tx_id|string %}selected{% endif %}>{{ entry.tx.member_name or entry.tx.item or 'Household expense' }} · {{ kinds[entry.tx.kind] }} · {{ entry.tx.tx_date }} · due {{ money(entry.remaining) }}</option>{% endfor %}
