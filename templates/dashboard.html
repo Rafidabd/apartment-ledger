@@ -16,24 +16,47 @@
       <div class="card stat"><div class="stat-icon coral">↗</div><p>Household spending</p><h2>{{ money(data.household) }}</h2><small>Includes caretaker-paid purchases</small></div>
     </div>
   </section>
-  <div class="basket-cta"><div><strong>Shopping trip with multiple items?</strong><p>Add a whole market list together, from চাল and ডাল to vegetables and eggs. One save.</p></div><a class="btn btn-primary" href="{{ url_for('basket') }}">＋ Open shopping basket</a></div>
-  <section class="action-grid" aria-label="Quick actions">
+  <section class="dashboard-section dashboard-entry-section" aria-labelledby="dashboard-actions-title">
+    <div class="dashboard-section-title"><div><p class="eyebrow">MAKE AN ENTRY</p><h2 id="dashboard-actions-title">What happened today?</h2></div><span class="dashboard-section-caption">A transaction takes just a few taps.</span></div>
+    <div class="dashboard-entry-layout">
+    <div class="action-grid" aria-label="Quick actions">
     <a class="action primary-action" href="{{ url_for('record',kind='expense') }}"><span class="action-icon">＋</span><span><strong>Add expense</strong><small>Record today's purchases</small></span><b>↗</b></a>
     <a class="action" href="{{ url_for('record',kind='money') }}"><span class="action-icon">↙</span><span><strong>Add money</strong><small>Parent contributions & other income</small></span><b>↗</b></a>
     <a class="action" href="{{ url_for('record',kind='advance') }}"><span class="action-icon">⇄</span><span><strong>Record advance</strong><small>Shared fund or caretaker's money</small></span><b>↗</b></a>
     <a class="action" href="{{ url_for('record',kind='repayment') }}"><span class="action-icon">✓</span><span><strong>Record repayment</strong><small>Settle someone's advance</small></span><b>↗</b></a>
+    </div>
+    <a class="dashboard-basket-feature" href="{{ url_for('basket') }}">
+      <span class="basket-feature-top"><span class="basket-feature-icon">▤</span><span class="basket-feature-tag">FASTER FOR MARKET TRIPS</span></span>
+      <strong>One shopping trip. All your items.</strong>
+      <small>চাল, ডাল, ডিম, vegetables — add several purchases together and save once.</small>
+      <span class="basket-feature-cta">Open shopping basket <span aria-hidden="true">↗</span></span>
+    </a>
+    </div>
   </section>
-  <div class="caretaker-dashboard-link">
-    <div><strong>Borrowing or settling money with the caretaker?</strong><p>Track his personal loans, shared-fund advances, reimbursements and purchases in one place.</p></div>
-    <a class="btn btn-outline" href="{{ url_for('caretaker_view',month=data.month) }}">Open caretaker account ↗</a>
-  </div>
-  <div class="caretaker-dashboard-link"><div><strong>Monthly roommate settlements</strong><p>Review contributions, expected payments, individual loans, repayments, and unpaid balances.</p></div><a class="btn btn-outline" href="{{ url_for('settlements',month=data.month) }}">Open roommate accounts ↗</a></div>
-  <section class="small-stat-grid">
+  <section class="dashboard-section dashboard-accounts" aria-label="Connected accounts">
+    <div class="dashboard-section-title"><div><p class="eyebrow">KEEP EVERYONE IN SYNC</p><h2>People & settlements</h2></div></div>
+    <div class="dashboard-route-grid">
+      <a class="dashboard-route-card" href="{{ url_for('caretaker_view',month=data.month) }}">
+        <span class="dashboard-route-icon">⇄</span>
+        <span><strong>Caretaker account</strong><small>Personal lending, reimbursements, and shared-fund advances.</small></span>
+        <span class="dashboard-route-arrow" aria-hidden="true">↗</span>
+      </a>
+      <a class="dashboard-route-card" href="{{ url_for('settlements',month=data.month) }}">
+        <span class="dashboard-route-icon">◫</span>
+        <span><strong>Roommate settlements</strong><small>Monthly contributions and unpaid balances for each person.</small></span>
+        <span class="dashboard-route-arrow" aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </section>
+  <section class="dashboard-section dashboard-outstanding" aria-label="Outstanding balances">
+    <div class="dashboard-section-title"><div><p class="eyebrow">AT MONTH-END</p><h2>Money still to settle</h2></div><a href="{{ url_for('reports',month=data.month) }}">View monthly report ↗</a></div>
+    <div class="small-stat-grid">
     <div class="card small-stat"><span>↗ Fund advances unpaid</span><strong>{{ money(data.current.fund_due) }}</strong><small>Roommates owe the shared fund</small></div>
     <div class="card small-stat"><span>⇄ Caretaker advances unpaid</span><strong>{{ money(data.current.caretaker_due) }}</strong><small>Roommates owe the caretaker</small></div>
     <div class="card small-stat"><span>◷ Caretaker reimbursements due</span><strong>{{ money(data.current.expenses_due) }}</strong><small>His own money used on shared expenses</small></div>
+    </div>
   </section>
-  <section class="two-column">
+  <section class="two-column dashboard-insights">
     <div class="card panel">
       <div class="panel-title"><div><h3>Where money went</h3><p>Household spending by category</p></div><a href="{{ url_for('reports',month=data.month) }}">Full report ↗</a></div>
       {% if data.by_category %}
@@ -53,5 +76,5 @@
       {% else %}<div class="empty">Nothing here yet. Start with “Add expense” or “Add money”.</div>{% endif %}
     </div>
   </section>
-  <div class="helper-row"><a href="{{ url_for('settings') }}">Manage saved items ↗</a><a href="{{ url_for('record',kind='caretaker-expense') }}">Caretaker bought something with his own money? Record it here ↗</a><a href="{{ url_for('record',kind='reimburse') }}">Reimburse caretaker ↗</a></div>
+  <div class="helper-row dashboard-footer-links"><a href="{{ url_for('settings') }}">Manage saved items ↗</a><a href="{{ url_for('record',kind='caretaker-expense') }}">Record a caretaker-paid purchase ↗</a><a href="{{ url_for('record',kind='reimburse') }}">Reimburse caretaker ↗</a></div>
 {% endblock %}
