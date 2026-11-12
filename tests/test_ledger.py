@@ -362,5 +362,74 @@ class LedgerTests(unittest.TestCase):
 
 
 
+    def test_caretaker_page_reconciles_all_money_types_with_monthly_report(self):
+        self.record('money', 2000, money_type='contribution', member_id='1')
+        self.record('advance', 300, source='advance_fund', member_id='1')
+        self.record('advance', 150, source='advance_caretaker', member_id='2')
+        self.record('repayment', 100, related_id='3')
+        self.record('caretaker-expense', 200, category_id='1', item='ডাল')
+        self.record('reimburse', 50, related_id='5')
+        with self.app.app_context():
+            summary = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        caretaker = summary['caretaker']
+        self.assertEqual(summary['closing'], 165000)
+        self.assertEqual(summary['household'], 20000)
+        self.assertEqual(caretaker['personal_loans_due'], 5000)
+        self.assertEqual(caretaker['household_reimbursements_due'], 15000)
+        self.assertEqual(caretaker['personal_due'], 20000)
+        self.assertEqual(caretaker['fund_advances_due'], 30000)
+        self.assertEqual(caretaker['totals']['advance_caretaker'], 15000)
+        self.assertEqual(caretaker['totals']['repayment_caretaker'], 10000)
+        self.assertEqual(caretaker['totals']['caretaker_expense'], 20000)
+        self.assertEqual(caretaker['totals']['caretaker_reimbursement'], 5000)
+        self.assertEqual(caretaker['personal_loans_by_member'], [('Bob', 5000)])
+        self.assertEqual(caretaker['fund_advances_by_member'], [('Alice', 30000)])
+        self.assertEqual(len(caretaker['records']), 5)
+        caretaker_page = self.client.get('/caretaker?month=2026-11')
+        self.assertEqual(caretaker_page.status_code, 200)
+        self.assertIn(b'Caretaker account', caretaker_page.data)
+        self.assertIn('৳200'.encode(), caretaker_page.data)
+        self.assertIn('ডাল'.encode(), caretaker_page.data)
+        self.assertIn(b'/record/advance?source=advance_caretaker', caretaker_page.data)
+        report = self.client.get('/reports?month=2026-11')
+        self.assertEqual(report.status_code, 200)
+        self.assertIn(b'Caretaker and shared-fund settlements', report.data)
+        self.assertIn(b'/caretaker?month=2026-11', report.data)
+
+    def test_caretaker_actions_return_to_caretaker_account(self):
+        form = self.client.get('/record/advance?from_caretaker=1&source=advance_caretaker')
+        self.assertEqual(form.status_code, 200)
+        self.assertIn(b'name="return_caretaker" value="1"', form.data)
+        self.assertIn(b'value="advance_caretaker" selected', form.data)
+        response = self.post('/record/advance', {
+            'tx_date': '2026-11-10', 'amount': '350',
+            'source': 'advance_caretaker', 'member_id': '2',
+            'return_caretaker': '1'
+        }, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/caretaker?month=2026-11', response.headers['Location'])
+        self.assertEqual(self.client.get('/caretaker?month=invalid').status_code, 400)
+        basket = self.client.get('/basket?payer=caretaker')
+        self.assertEqual(basket.status_code, 200)
+        self.assertIn(b'value="caretaker" selected', basket.data)
+        with self.app.app_context():
+            month = self.app.extensions['ledger_tools']['monthly_data']('2026-11')
+        self.assertEqual(month['caretaker']['personal_loans_due'], 35000)
+        self.assertEqual(month['household'], 0)
+
+    def test_autocomplete_markup_available_for_single_and_batch_entry(self):
+        single = self.client.get('/record/expense')
+        self.assertEqual(single.status_code, 200)
+        self.assertIn(b'id="item-name" data-item-autocomplete', single.data)
+        self.assertIn(b'item-suggest.js', single.data)
+        basket = self.client.get('/basket')
+        self.assertEqual(basket.status_code, 200)
+        self.assertIn(b'class="basket-item-name" data-item-autocomplete', basket.data)
+        self.assertNotIn(b'class="basket-pick"', basket.data)
+        self.assertIn(b'id="basket-catalog"', basket.data)
+        self.assertIn('পেঁয়াজ'.encode(), basket.data)
+
+
+
 if __name__ == '__main__':
     unittest.main()
